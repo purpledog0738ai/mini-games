@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Minesweeper - Mini Games</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            padding: 10px;
+            overflow: hidden;
+        }
+        .header {
+            color: white;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+        .info-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 350px;
+            margin-bottom: 10px;
+            color: white;
+            font-size: 1.2rem;
+        }
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(255,255,255,0.1);
+            padding: 8px 15px;
+            border-radius: 10px;
+        }
+        #grid {
+            display: grid;
+            gap: 2px;
+            background: #0f3460;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .cell {
+            width: 35px;
+            height: 35px;
+            background: linear-gradient(145deg, #4a69bd, #3c55a5);
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: transform 0.1s;
+            color: white;
+        }
+        .cell:active {
+            transform: scale(0.95);
+        }
+        .cell.revealed {
+            background: linear-gradient(145deg, #2d3a4f, #1e2a3a);
+        }
+        .cell.mine {
+            background: #e74c3c;
+        }
+        .cell.flagged::after {
+            content: '🚩';
+        }
+        .cell.revealed.mine::after {
+            content: '💣';
+        }
+        .n1 { color: #3498db; }
+        .n2 { color: #27ae60; }
+        .n3 { color: #e74c3c; }
+        .n4 { color: #9b59b6; }
+        .n5 { color: #e67e22; }
+        .n6 { color: #1abc9c; }
+        .n7 { color: #34495e; }
+        .n8 { color: #95a5a6; }
+        
+        .controls {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            background: linear-gradient(145deg, #e94560, #c73e54);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(233, 69, 96, 0.4);
+        }
+        .mode-btn {
+            background: linear-gradient(145deg, #4a69bd, #3c55a5);
+        }
+        .mode-btn.active {
+            background: linear-gradient(145deg, #27ae60, #219a52);
+        }
+        
+        .tip {
+            color: rgba(255,255,255,0.6);
+            font-size: 0.85rem;
+            margin-top: 15px;
+            text-align: center;
+        }
+        
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        .overlay.show {
+            display: flex;
+        }
+        .modal {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        .modal h2 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        .modal p {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            color: rgba(255,255,255,0.8);
+        }
+
+        @media (max-width: 400px) {
+            .cell {
+                width: 30px;
+                height: 30px;
+                font-size: 0.95rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>💣 Minesweeper</h1>
+    </div>
+    
+    <div class="info-bar">
+        <div class="info-item">🚩 <span id="flags">10</span></div>
+        <div class="info-item">⏱️ <span id="time">0</span>s</div>
+        <div class="info-item">💣 <span id="mines">10</span></div>
+    </div>
+    
+    <div id="grid"></div>
+    
+    <div class="controls">
+        <button class="btn mode-btn" id="modeBtn" onclick="toggleMode()">🚩 깃발모드</button>
+        <button class="btn" onclick="initGame()">🔄 새게임</button>
+    </div>
+    
+    <p class="tip">탭: 칸 열기 | 깃발모드 또는 길게 누르기: 깃발</p>
+    
+    <div class="overlay" id="overlay">
+        <div class="modal">
+            <h2 id="resultTitle">🎉 승리!</h2>
+            <p id="resultText">10초 만에 클리어!</p>
+            <button class="btn" onclick="initGame(); hideOverlay();">다시하기</button>
+        </div>
+    </div>
+
+    <script>
+        const ROWS = 9;
+        const COLS = 9;
+        const MINES = 10;
+        
+        let grid = [];
+        let revealed = [];
+        let flagged = [];
+        let gameOver = false;
+        let gameStarted = false;
+        let flagMode = false;
+        let timer = 0;
+        let timerInterval = null;
+        let longPressTimer = null;
+        
+        const gridEl = document.getElementById('grid');
+        const flagsEl = document.getElementById('flags');
+        const timeEl = document.getElementById('time');
+        const modeBtn = document.getElementById('modeBtn');
+        
+        function initGame() {
+            grid = [];
+            revealed = Array(ROWS).fill(null).map(() => Array(COLS).fill(false));
+            flagged = Array(ROWS).fill(null).map(() => Array(COLS).fill(false));
+            gameOver = false;
+            gameStarted = false;
+            timer = 0;
+            timeEl.textContent = '0';
+            flagsEl.textContent = MINES;
+            
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            
+            // 빈 그리드 생성
+            for (let r = 0; r < ROWS; r++) {
+                grid[r] = [];
+                for (let c = 0; c < COLS; c++) {
+                    grid[r][c] = 0;
+                }
+            }
+            
+            // 지뢰 배치
+            let placed = 0;
+            while (placed < MINES) {
+                const r = Math.floor(Math.random() * ROWS);
+                const c = Math.floor(Math.random() * COLS);
+                if (grid[r][c] !== -1) {
+                    grid[r][c] = -1;
+                    placed++;
+                }
+            }
+            
+            // 숫자 계산
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (grid[r][c] === -1) continue;
+                    let count = 0;
+                    for (let dr = -1; dr <= 1; dr++) {
+                        for (let dc = -1; dc <= 1; dc++) {
+                            const nr = r + dr;
+                            const nc = c + dc;
+                            if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && grid[nr][nc] === -1) {
+                                count++;
+                            }
+                        }
+                    }
+                    grid[r][c] = count;
+                }
+            }
+            
+            render();
+        }
+        
+        function render() {
+            gridEl.innerHTML = '';
+            gridEl.style.gridTemplateColumns = `repeat(${COLS}, 1fr)`;
+            
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    
+                    if (revealed[r][c]) {
+                        cell.classList.add('revealed');
+                        if (grid[r][c] === -1) {
+                            cell.classList.add('mine');
+                        } else if (grid[r][c] > 0) {
+                            cell.textContent = grid[r][c];
+                            cell.classList.add('n' + grid[r][c]);
+                        }
+                    } else if (flagged[r][c]) {
+                        cell.classList.add('flagged');
+                    }
+                    
+                    // 터치/클릭 이벤트
+                    cell.addEventListener('click', (e) => handleClick(r, c));
+                    cell.addEventListener('touchstart', (e) => handleTouchStart(e, r, c));
+                    cell.addEventListener('touchend', (e) => handleTouchEnd(e));
+                    cell.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        toggleFlag(r, c);
+                    });
+                    
+                    gridEl.appendChild(cell);
+                }
+            }
+        }
+        
+        function handleTouchStart(e, r, c) {
+            longPressTimer = setTimeout(() => {
+                toggleFlag(r, c);
+                longPressTimer = null;
+            }, 500);
+        }
+        
+        function handleTouchEnd(e) {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+        }
+        
+        function handleClick(r, c) {
+            if (gameOver || revealed[r][c]) return;
+            
+            if (flagMode) {
+                toggleFlag(r, c);
+            } else {
+                if (flagged[r][c]) return;
+                reveal(r, c);
+            }
+        }
+        
+        function toggleFlag(r, c) {
+            if (gameOver || revealed[r][c]) return;
+            
+            flagged[r][c] = !flagged[r][c];
+            updateFlagCount();
+            render();
+        }
+        
+        function updateFlagCount() {
+            let count = 0;
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (flagged[r][c]) count++;
+                }
+            }
+            flagsEl.textContent = MINES - count;
+        }
+        
+        function reveal(r, c) {
+            if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return;
+            if (revealed[r][c] || flagged[r][c]) return;
+            
+            if (!gameStarted) {
+                gameStarted = true;
+                timerInterval = setInterval(() => {
+                    timer++;
+                    timeEl.textContent = timer;
+                }, 1000);
+            }
+            
+            revealed[r][c] = true;
+            
+            if (grid[r][c] === -1) {
+                // 지뢰!
+                gameOver = true;
+                clearInterval(timerInterval);
+                revealAll();
+                render();
+                setTimeout(() => showResult(false), 500);
+                return;
+            }
+            
+            if (grid[r][c] === 0) {
+                // 빈 칸이면 주변 열기
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) {
+                        reveal(r + dr, c + dc);
+                    }
+                }
+            }
+            
+            render();
+            checkWin();
+        }
+        
+        function revealAll() {
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (grid[r][c] === -1) {
+                        revealed[r][c] = true;
+                    }
+                }
+            }
+        }
+        
+        function checkWin() {
+            let unrevealed = 0;
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (!revealed[r][c] && grid[r][c] !== -1) {
+                        unrevealed++;
+                    }
+                }
+            }
+            
+            if (unrevealed === 0) {
+                gameOver = true;
+                clearInterval(timerInterval);
+                showResult(true);
+            }
+        }
+        
+        function showResult(won) {
+            const overlay = document.getElementById('overlay');
+            const title = document.getElementById('resultTitle');
+            const text = document.getElementById('resultText');
+            
+            if (won) {
+                title.textContent = '🎉 승리!';
+                text.textContent = `${timer}초 만에 클리어!`;
+            } else {
+                title.textContent = '💥 게임오버';
+                text.textContent = '지뢰를 밟았어요!';
+            }
+            
+            overlay.classList.add('show');
+        }
+        
+        function hideOverlay() {
+            document.getElementById('overlay').classList.remove('show');
+        }
+        
+        function toggleMode() {
+            flagMode = !flagMode;
+            modeBtn.classList.toggle('active', flagMode);
+            modeBtn.textContent = flagMode ? '🚩 깃발모드 ON' : '🚩 깃발모드';
+        }
+        
+        // 게임 시작
+        initGame();
+    </script>
+</body>
+</html>
