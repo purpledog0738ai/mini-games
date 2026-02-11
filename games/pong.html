@@ -32,8 +32,11 @@
         let targetY;
 
         function resize() {
-            const maxW = Math.min(window.innerWidth - 20, 500);
-            const maxH = Math.min(window.innerHeight - 100, 700);
+            // PC에서는 더 크게
+            const limitW = window.innerWidth > 768 ? 800 : 500;
+            const limitH = window.innerWidth > 768 ? 900 : 700;
+            const maxW = Math.min(window.innerWidth - 20, limitW);
+            const maxH = Math.min(window.innerHeight - 100, limitH);
             W = maxW; H = maxH;
             canvas.width = W; canvas.height = H;
             reset();

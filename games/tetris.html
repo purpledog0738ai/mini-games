@@ -67,7 +67,9 @@
 
         function resizeCanvas() {
             const maxH = window.innerHeight - 180, maxW = window.innerWidth - 40;
-            CELL = Math.min(Math.floor(maxH/ROWS), Math.floor(maxW/COLS), 30);
+            // PC에서는 더 크게
+            const cellLimit = window.innerWidth > 768 ? 40 : 30;
+            CELL = Math.min(Math.floor(maxH/ROWS), Math.floor(maxW/COLS), cellLimit);
             CELL = Math.max(CELL, 18);
             canvas.width = COLS * CELL; canvas.height = ROWS * CELL;
         }

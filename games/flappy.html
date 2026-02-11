@@ -25,7 +25,10 @@
         const canvas = document.getElementById('game');
         const ctx = canvas.getContext('2d');
 
-        const BASE_WIDTH = 400, BASE_HEIGHT = 600;
+        // PC에서는 더 크게
+        const isPC = window.innerWidth > 768;
+        const BASE_WIDTH = isPC ? 500 : 400;
+        const BASE_HEIGHT = isPC ? 750 : 600;
         let scale = 1, dpr = 1, gameRunning = false;
 
         function resizeCanvas() {
