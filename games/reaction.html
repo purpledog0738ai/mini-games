@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Reaction Time - Mini Games</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            overflow: hidden;
+            transition: background-color 0.3s;
+        }
+        
+        /* 상태별 배경색 */
+        body.waiting {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        }
+        body.ready {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+        }
+        body.result {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+        }
+        body.early {
+            background: linear-gradient(135deg, #f39c12, #d68910);
+        }
+        body.menu {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+        }
+
+        .game-container {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            cursor: pointer;
+        }
+
+        .icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        .icon.ready {
+            animation: none;
+        }
+
+        .message {
+            color: white;
+            font-size: 2rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .sub-message {
+            color: rgba(255,255,255,0.8);
+            font-size: 1.1rem;
+            text-align: center;
+        }
+
+        .time-display {
+            font-size: 5rem;
+            font-weight: bold;
+            color: white;
+            margin: 20px 0;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .time-display span {
+            font-size: 2rem;
+            vertical-align: baseline;
+        }
+
+        /* 메뉴 화면 */
+        .menu-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+        }
+        .menu-screen h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 0 30px rgba(255, 200, 50, 0.5);
+        }
+        .menu-screen .desc {
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+
+        /* 통계 */
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .stat-item {
+            background: rgba(255,255,255,0.1);
+            padding: 15px 25px;
+            border-radius: 15px;
+            text-align: center;
+            backdrop-filter: blur(5px);
+        }
+        .stat-item .label {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 5px;
+        }
+        .stat-item .value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #f1c40f;
+        }
+
+        /* 히스토리 */
+        .history {
+            display: flex;
+            gap: 8px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 300px;
+        }
+        .history-item {
+            width: 45px;
+            height: 45px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: white;
+        }
+        .history-item.fast { background: #2ecc71; }
+        .history-item.medium { background: #f1c40f; }
+        .history-item.slow { background: #e74c3c; }
+        .history-item.early { background: #95a5a6; }
+
+        /* 버튼 */
+        .btn {
+            background: linear-gradient(145deg, #00d4ff, #00a8cc);
+            color: white;
+            border: none;
+            padding: 18px 50px;
+            border-radius: 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 20px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.4);
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        /* 등급 표시 */
+        .grade {
+            font-size: 1.2rem;
+            padding: 8px 20px;
+            border-radius: 20px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .grade.excellent { background: linear-gradient(135deg, #f1c40f, #f39c12); color: #fff; }
+        .grade.great { background: linear-gradient(135deg, #2ecc71, #27ae60); color: #fff; }
+        .grade.good { background: linear-gradient(135deg, #3498db, #2980b9); color: #fff; }
+        .grade.average { background: linear-gradient(135deg, #9b59b6, #8e44ad); color: #fff; }
+        .grade.slow { background: linear-gradient(135deg, #e74c3c, #c0392b); color: #fff; }
+
+        /* 팁 */
+        .tip {
+            position: fixed;
+            bottom: 30px;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.85rem;
+        }
+
+        /* 반응형 */
+        @media (max-width: 400px) {
+            .message { font-size: 1.6rem; }
+            .time-display { font-size: 4rem; }
+            .icon { font-size: 60px; }
+        }
+    </style>
+</head>
+<body class="menu">
+    <div class="game-container" id="gameContainer">
+        <!-- 메뉴 화면 -->
+        <div class="menu-screen" id="menuScreen">
+            <div class="icon">⚡</div>
+            <h1>Reaction Time</h1>
+            <p class="desc">빨간색이 초록색으로 바뀌면 터치!</p>
+            
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="label">최고 기록</div>
+                    <div class="value" id="bestTime">-</div>
+                </div>
+                <div class="stat-item">
+                    <div class="label">평균</div>
+                    <div class="value" id="avgTime">-</div>
+                </div>
+            </div>
+            
+            <button class="btn" id="startBtn">🎮 시작하기</button>
+            
+            <div class="history" id="history"></div>
+        </div>
+        
+        <!-- 게임 화면 -->
+        <div id="gameScreen" style="display: none; text-align: center;">
+            <div class="icon" id="gameIcon">🎯</div>
+            <div class="message" id="gameMessage">준비...</div>
+            <div class="sub-message" id="gameSubMessage">초록색이 되면 터치하세요</div>
+            <div class="time-display" id="timeDisplay" style="display: none;">0<span>ms</span></div>
+            <div class="grade" id="gradeDisplay" style="display: none;"></div>
+        </div>
+    </div>
+    
+    <p class="tip" id="tip">화면 아무 곳이나 터치하세요</p>
+
+    <!-- 사운드 -->
+    <script>
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function playBeep(freq = 800, duration = 100, type = 'sine') {
+            if (!audioCtx) audioCtx = new AudioContext();
+            
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.type = type;
+            oscillator.frequency.value = freq;
+            
+            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
+            
+            oscillator.start(audioCtx.currentTime);
+            oscillator.stop(audioCtx.currentTime + duration / 1000);
+        }
+
+        function playSuccess() {
+            playBeep(880, 100);
+            setTimeout(() => playBeep(1100, 150), 100);
+        }
+
+        function playFail() {
+            playBeep(200, 300, 'sawtooth');
+        }
+    </script>
+
+    <script>
+        const gameContainer = document.getElementById('gameContainer');
+        const menuScreen = document.getElementById('menuScreen');
+        const gameScreen = document.getElementById('gameScreen');
+        const startBtn = document.getElementById('startBtn');
+        const gameIcon = document.getElementById('gameIcon');
+        const gameMessage = document.getElementById('gameMessage');
+        const gameSubMessage = document.getElementById('gameSubMessage');
+        const timeDisplay = document.getElementById('timeDisplay');
+        const gradeDisplay = document.getElementById('gradeDisplay');
+        const bestTimeEl = document.getElementById('bestTime');
+        const avgTimeEl = document.getElementById('avgTime');
+        const historyEl = document.getElementById('history');
+        const tip = document.getElementById('tip');
+
+        let state = 'menu'; // menu, waiting, ready, result, early
+        let startTime = 0;
+        let timeoutId = null;
+        let history = JSON.parse(localStorage.getItem('reactionHistory')) || [];
+        let bestTime = parseInt(localStorage.getItem('reactionBest')) || 0;
+        let round = 0;
+        const MAX_ROUNDS = 5;
+
+        // 초기화
+        updateStats();
+
+        // 시작 버튼
+        startBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            startGame();
+        });
+
+        // 게임 영역 터치/클릭
+        gameContainer.addEventListener('click', handleGameClick);
+        gameContainer.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleGameClick();
+        }, { passive: false });
+
+        function startGame() {
+            round = 0;
+            history = [];
+            menuScreen.style.display = 'none';
+            gameScreen.style.display = 'block';
+            tip.style.display = 'block';
+            nextRound();
+        }
+
+        function nextRound() {
+            round++;
+            state = 'waiting';
+            document.body.className = 'waiting';
+            
+            gameIcon.textContent = '🎯';
+            gameIcon.classList.remove('ready');
+            gameMessage.textContent = `라운드 ${round}/${MAX_ROUNDS}`;
+            gameSubMessage.textContent = '초록색이 되면 터치!';
+            timeDisplay.style.display = 'none';
+            gradeDisplay.style.display = 'none';
+            tip.textContent = '기다리세요...';
+
+            // 랜덤 딜레이 (1.5 ~ 5초)
+            const delay = 1500 + Math.random() * 3500;
+            timeoutId = setTimeout(() => {
+                if (state === 'waiting') {
+                    showGreen();
+                }
+            }, delay);
+        }
+
+        function showGreen() {
+            state = 'ready';
+            document.body.className = 'ready';
+            
+            gameIcon.textContent = '⚡';
+            gameIcon.classList.add('ready');
+            gameMessage.textContent = '지금!';
+            gameSubMessage.textContent = '빨리 터치하세요!';
+            tip.textContent = '터치!';
+
+            startTime = performance.now();
+            playBeep(1000, 50);
+        }
+
+        function handleGameClick() {
+            if (state === 'menu') return;
+
+            if (state === 'waiting') {
+                // 너무 빨리 클릭 (성급함)
+                clearTimeout(timeoutId);
+                showEarly();
+            } else if (state === 'ready') {
+                // 정상 클릭
+                const reactionTime = Math.round(performance.now() - startTime);
+                showResult(reactionTime);
+            } else if (state === 'result' || state === 'early') {
+                // 결과 화면에서 클릭 - 다음 라운드 또는 메뉴
+                if (round >= MAX_ROUNDS) {
+                    showMenu();
+                } else {
+                    nextRound();
+                }
+            }
+        }
+
+        function showEarly() {
+            state = 'early';
+            document.body.className = 'early';
+            
+            gameIcon.textContent = '😅';
+            gameMessage.textContent = '너무 빨라요!';
+            gameSubMessage.textContent = '초록색이 될 때까지 기다리세요';
+            tip.textContent = '터치하여 다시 시도';
+
+            history.push({ time: -1, early: true });
+            playFail();
+        }
+
+        function showResult(time) {
+            state = 'result';
+            document.body.className = 'result';
+            
+            history.push({ time: time, early: false });
+            
+            // 최고 기록 갱신
+            if (bestTime === 0 || time < bestTime) {
+                bestTime = time;
+                localStorage.setItem('reactionBest', bestTime);
+            }
+
+            // 등급 계산
+            const grade = getGrade(time);
+            
+            gameIcon.textContent = grade.emoji;
+            gameMessage.textContent = grade.text;
+            gameSubMessage.textContent = round < MAX_ROUNDS ? '터치하여 계속' : '터치하여 결과 보기';
+            
+            timeDisplay.innerHTML = `${time}<span>ms</span>`;
+            timeDisplay.style.display = 'block';
+            
+            gradeDisplay.textContent = grade.label;
+            gradeDisplay.className = 'grade ' + grade.class;
+            gradeDisplay.style.display = 'inline-block';
+            
+            tip.textContent = `${round}/${MAX_ROUNDS} 라운드`;
+
+            playSuccess();
+        }
+
+        function getGrade(time) {
+            if (time < 200) return { emoji: '🏆', text: '놀라워요!', label: '초인적', class: 'excellent' };
+            if (time < 250) return { emoji: '⚡', text: '대단해요!', label: '빠름', class: 'great' };
+            if (time < 300) return { emoji: '👍', text: '좋아요!', label: '양호', class: 'good' };
+            if (time < 400) return { emoji: '😊', text: '괜찮아요', label: '평균', class: 'average' };
+            return { emoji: '🐢', text: '조금 느려요', label: '느림', class: 'slow' };
+        }
+
+        function showMenu() {
+            state = 'menu';
+            document.body.className = 'menu';
+            
+            gameScreen.style.display = 'none';
+            menuScreen.style.display = 'flex';
+            tip.textContent = '화면 아무 곳이나 터치하세요';
+
+            // 히스토리 저장
+            const validTimes = history.filter(h => !h.early).map(h => h.time);
+            if (validTimes.length > 0) {
+                const savedHistory = JSON.parse(localStorage.getItem('reactionHistory')) || [];
+                savedHistory.push(...validTimes);
+                // 최근 20개만 유지
+                const trimmed = savedHistory.slice(-20);
+                localStorage.setItem('reactionHistory', JSON.stringify(trimmed));
+            }
+
+            updateStats();
+            renderHistory();
+        }
+
+        function updateStats() {
+            bestTimeEl.textContent = bestTime > 0 ? `${bestTime}ms` : '-';
+            
+            const savedHistory = JSON.parse(localStorage.getItem('reactionHistory')) || [];
+            if (savedHistory.length > 0) {
+                const avg = Math.round(savedHistory.reduce((a, b) => a + b, 0) / savedHistory.length);
+                avgTimeEl.textContent = `${avg}ms`;
+            } else {
+                avgTimeEl.textContent = '-';
+            }
+        }
+
+        function renderHistory() {
+            const savedHistory = JSON.parse(localStorage.getItem('reactionHistory')) || [];
+            const recent = savedHistory.slice(-10);
+            
+            historyEl.innerHTML = recent.map(time => {
+                let cls = 'slow';
+                if (time < 250) cls = 'fast';
+                else if (time < 350) cls = 'medium';
+                return `<div class="history-item ${cls}">${time}</div>`;
+            }).join('');
+        }
+
+        renderHistory();
+
+        // 키보드 지원
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'Enter') {
+                e.preventDefault();
+                if (state === 'menu') {
+                    startGame();
+                } else {
+                    handleGameClick();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
