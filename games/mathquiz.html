@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Math Quiz - Mini Games</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            overflow: hidden;
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 500px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        /* 메뉴 화면 */
+        .menu-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+        }
+        .menu-screen h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 0 30px rgba(255, 200, 50, 0.5);
+        }
+        .menu-screen .desc {
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+        .icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* 통계 */
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .stat-item {
+            background: rgba(255,255,255,0.1);
+            padding: 15px 25px;
+            border-radius: 15px;
+            text-align: center;
+            backdrop-filter: blur(5px);
+        }
+        .stat-item .label {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 5px;
+        }
+        .stat-item .value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #f1c40f;
+        }
+
+        /* 난이도 선택 */
+        .difficulty-select {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .diff-btn {
+            padding: 12px 24px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 25px;
+            background: transparent;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .diff-btn:hover, .diff-btn.active {
+            background: rgba(255,255,255,0.2);
+            border-color: #f1c40f;
+        }
+        .diff-btn.active {
+            background: linear-gradient(135deg, #f1c40f, #e67e22);
+            border-color: transparent;
+        }
+
+        /* 버튼 */
+        .btn {
+            background: linear-gradient(145deg, #00d4ff, #00a8cc);
+            color: white;
+            border: none;
+            padding: 18px 50px;
+            border-radius: 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 20px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.4);
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        /* 게임 화면 */
+        .game-screen {
+            display: none;
+            color: white;
+        }
+
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .timer {
+            font-size: 1.5rem;
+            font-weight: bold;
+            background: rgba(255,255,255,0.1);
+            padding: 10px 20px;
+            border-radius: 20px;
+        }
+        .timer.warning { color: #e74c3c; animation: pulse 0.5s infinite; }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        .score-display {
+            font-size: 1.2rem;
+            color: #f1c40f;
+        }
+        .combo-display {
+            font-size: 1rem;
+            color: #2ecc71;
+        }
+
+        /* 문제 영역 */
+        .question-area {
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 40px 20px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+        }
+        .question {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            letter-spacing: 5px;
+        }
+        .question.correct {
+            animation: correct 0.3s ease-out;
+            color: #2ecc71;
+        }
+        .question.wrong {
+            animation: wrong 0.3s ease-out;
+            color: #e74c3c;
+        }
+        @keyframes correct {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        @keyframes wrong {
+            0%, 50%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        /* 입력 영역 */
+        .answer-input {
+            width: 100%;
+            max-width: 200px;
+            padding: 15px;
+            font-size: 2rem;
+            text-align: center;
+            border: none;
+            border-radius: 15px;
+            background: rgba(255,255,255,0.95);
+            color: #333;
+            font-weight: bold;
+            outline: none;
+        }
+        .answer-input:focus {
+            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.5);
+        }
+
+        /* 숫자 패드 (모바일) */
+        .numpad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            max-width: 300px;
+            margin: 20px auto;
+        }
+        .numpad-btn {
+            padding: 20px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 15px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            cursor: pointer;
+            transition: all 0.1s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .numpad-btn:active {
+            transform: scale(0.95);
+            background: rgba(255,255,255,0.3);
+        }
+        .numpad-btn.submit {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+        }
+        .numpad-btn.clear {
+            background: rgba(231, 76, 60, 0.5);
+        }
+        .numpad-btn.negative {
+            background: rgba(155, 89, 182, 0.5);
+        }
+
+        /* 결과 화면 */
+        .result-screen {
+            display: none;
+            color: white;
+            text-align: center;
+        }
+        .result-icon {
+            font-size: 100px;
+            margin-bottom: 20px;
+        }
+        .result-title {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        .result-score {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #f1c40f;
+            margin: 20px 0;
+        }
+        .result-stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 20px 0;
+        }
+        .result-stat {
+            text-align: center;
+        }
+        .result-stat .label {
+            color: rgba(255,255,255,0.6);
+            font-size: 0.9rem;
+        }
+        .result-stat .value {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .grade-badge {
+            display: inline-block;
+            padding: 10px 30px;
+            border-radius: 25px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .grade-badge.s { background: linear-gradient(135deg, #f1c40f, #f39c12); }
+        .grade-badge.a { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
+        .grade-badge.b { background: linear-gradient(135deg, #3498db, #2980b9); }
+        .grade-badge.c { background: linear-gradient(135deg, #2ecc71, #27ae60); }
+        .grade-badge.d { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+
+        /* 진행 바 */
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+
+        /* 반응형 */
+        @media (max-width: 400px) {
+            .question { font-size: 2.5rem; }
+            .answer-input { font-size: 1.5rem; max-width: 150px; }
+            .numpad-btn { padding: 15px; font-size: 1.3rem; }
+        }
+
+        /* PC에서 숫자패드 숨기기 */
+        @media (min-width: 768px) {
+            .numpad { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- 메뉴 화면 -->
+        <div class="menu-screen" id="menuScreen">
+            <div class="icon">🔢</div>
+            <h1>Math Quiz</h1>
+            <p class="desc">60초 안에 최대한 많이 풀어라!</p>
+
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="label">최고 점수</div>
+                    <div class="value" id="bestScore">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="label">총 게임</div>
+                    <div class="value" id="totalGames">0</div>
+                </div>
+            </div>
+
+            <div class="difficulty-select">
+                <button class="diff-btn active" data-diff="easy">😊 쉬움</button>
+                <button class="diff-btn" data-diff="normal">😎 보통</button>
+                <button class="diff-btn" data-diff="hard">🔥 어려움</button>
+            </div>
+
+            <button class="btn" id="startBtn">🎮 시작하기</button>
+        </div>
+
+        <!-- 게임 화면 -->
+        <div class="game-screen" id="gameScreen">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+
+            <div class="game-header">
+                <div class="timer" id="timer">⏱️ 60</div>
+                <div>
+                    <div class="score-display">점수: <span id="score">0</span></div>
+                    <div class="combo-display" id="combo"></div>
+                </div>
+            </div>
+
+            <div class="question-area">
+                <div class="question" id="question">12 + 8 = ?</div>
+                <input type="text" class="answer-input" id="answerInput" inputmode="numeric" pattern="-?[0-9]*" autocomplete="off">
+            </div>
+
+            <div class="numpad">
+                <button class="numpad-btn" data-num="1">1</button>
+                <button class="numpad-btn" data-num="2">2</button>
+                <button class="numpad-btn" data-num="3">3</button>
+                <button class="numpad-btn" data-num="4">4</button>
+                <button class="numpad-btn" data-num="5">5</button>
+                <button class="numpad-btn" data-num="6">6</button>
+                <button class="numpad-btn" data-num="7">7</button>
+                <button class="numpad-btn" data-num="8">8</button>
+                <button class="numpad-btn" data-num="9">9</button>
+                <button class="numpad-btn negative" data-num="-">−</button>
+                <button class="numpad-btn" data-num="0">0</button>
+                <button class="numpad-btn clear" data-num="clear">⌫</button>
+                <button class="numpad-btn submit" data-num="submit" style="grid-column: span 3;">✓ 제출</button>
+            </div>
+        </div>
+
+        <!-- 결과 화면 -->
+        <div class="result-screen" id="resultScreen">
+            <div class="result-icon" id="resultIcon">🏆</div>
+            <div class="result-title" id="resultTitle">대단해요!</div>
+            <div class="grade-badge" id="gradeBadge">S</div>
+            <div class="result-score" id="resultScore">0</div>
+            <div class="result-stats">
+                <div class="result-stat">
+                    <div class="value" id="correctCount">0</div>
+                    <div class="label">정답</div>
+                </div>
+                <div class="result-stat">
+                    <div class="value" id="wrongCount">0</div>
+                    <div class="label">오답</div>
+                </div>
+                <div class="result-stat">
+                    <div class="value" id="maxCombo">0</div>
+                    <div class="label">최대 콤보</div>
+                </div>
+            </div>
+            <button class="btn" id="retryBtn">🔄 다시 하기</button>
+            <button class="btn" id="menuBtn" style="background: rgba(255,255,255,0.2); margin-left: 10px;">🏠 메뉴</button>
+        </div>
+    </div>
+
+    <!-- 사운드 -->
+    <script>
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function playSound(freq, duration, type = 'sine') {
+            if (!audioCtx) audioCtx = new AudioContext();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.type = type;
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
+            osc.start(audioCtx.currentTime);
+            osc.stop(audioCtx.currentTime + duration / 1000);
+        }
+
+        function playCorrect() {
+            playSound(880, 80);
+            setTimeout(() => playSound(1100, 120), 80);
+        }
+        function playWrong() {
+            playSound(200, 200, 'sawtooth');
+        }
+        function playTick() {
+            playSound(600, 30);
+        }
+        function playGameOver() {
+            playSound(400, 150);
+            setTimeout(() => playSound(300, 150), 150);
+            setTimeout(() => playSound(200, 300), 300);
+        }
+    </script>
+
+    <script>
+        // DOM 요소
+        const menuScreen = document.getElementById('menuScreen');
+        const gameScreen = document.getElementById('gameScreen');
+        const resultScreen = document.getElementById('resultScreen');
+        const startBtn = document.getElementById('startBtn');
+        const retryBtn = document.getElementById('retryBtn');
+        const menuBtn = document.getElementById('menuBtn');
+        const questionEl = document.getElementById('question');
+        const answerInput = document.getElementById('answerInput');
+        const timerEl = document.getElementById('timer');
+        const scoreEl = document.getElementById('score');
+        const comboEl = document.getElementById('combo');
+        const progressFill = document.getElementById('progressFill');
+        const bestScoreEl = document.getElementById('bestScore');
+        const totalGamesEl = document.getElementById('totalGames');
+
+        // 게임 상태
+        let difficulty = 'easy';
+        let timeLeft = 60;
+        let score = 0;
+        let combo = 0;
+        let maxCombo = 0;
+        let correct = 0;
+        let wrong = 0;
+        let currentAnswer = 0;
+        let timerInterval = null;
+
+        // 난이도 설정
+        const diffSettings = {
+            easy: { ops: ['+', '-'], maxNum: 20, time: 60 },
+            normal: { ops: ['+', '-', '×'], maxNum: 50, time: 60 },
+            hard: { ops: ['+', '-', '×', '÷'], maxNum: 100, time: 60 }
+        };
+
+        // 저장된 데이터 로드
+        let bestScore = parseInt(localStorage.getItem('mathquiz_best')) || 0;
+        let totalGames = parseInt(localStorage.getItem('mathquiz_games')) || 0;
+        bestScoreEl.textContent = bestScore;
+        totalGamesEl.textContent = totalGames;
+
+        // 난이도 선택
+        document.querySelectorAll('.diff-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                difficulty = btn.dataset.diff;
+            });
+        });
+
+        // 게임 시작
+        startBtn.addEventListener('click', startGame);
+        retryBtn.addEventListener('click', startGame);
+        menuBtn.addEventListener('click', showMenu);
+
+        function startGame() {
+            const settings = diffSettings[difficulty];
+            timeLeft = settings.time;
+            score = 0;
+            combo = 0;
+            maxCombo = 0;
+            correct = 0;
+            wrong = 0;
+
+            menuScreen.style.display = 'none';
+            resultScreen.style.display = 'none';
+            gameScreen.style.display = 'block';
+
+            updateUI();
+            generateQuestion();
+            answerInput.value = '';
+            answerInput.focus();
+
+            // 타이머 시작
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimer();
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function generateQuestion() {
+            const settings = diffSettings[difficulty];
+            const ops = settings.ops;
+            const op = ops[Math.floor(Math.random() * ops.length)];
+            
+            let a, b;
+            
+            switch (op) {
+                case '+':
+                    a = Math.floor(Math.random() * settings.maxNum) + 1;
+                    b = Math.floor(Math.random() * settings.maxNum) + 1;
+                    currentAnswer = a + b;
+                    break;
+                case '-':
+                    a = Math.floor(Math.random() * settings.maxNum) + 1;
+                    b = Math.floor(Math.random() * a) + 1; // b <= a 보장
+                    currentAnswer = a - b;
+                    break;
+                case '×':
+                    a = Math.floor(Math.random() * 12) + 1;
+                    b = Math.floor(Math.random() * 12) + 1;
+                    currentAnswer = a * b;
+                    break;
+                case '÷':
+                    b = Math.floor(Math.random() * 12) + 1;
+                    currentAnswer = Math.floor(Math.random() * 12) + 1;
+                    a = b * currentAnswer; // 나눠떨어지게
+                    break;
+            }
+
+            questionEl.textContent = `${a} ${op} ${b} = ?`;
+            questionEl.classList.remove('correct', 'wrong');
+        }
+
+        function checkAnswer() {
+            const userAnswer = parseInt(answerInput.value);
+            
+            if (isNaN(userAnswer)) return;
+
+            if (userAnswer === currentAnswer) {
+                // 정답
+                combo++;
+                if (combo > maxCombo) maxCombo = combo;
+                correct++;
+                
+                // 점수 계산 (콤보 보너스)
+                const basePoints = difficulty === 'easy' ? 10 : difficulty === 'normal' ? 15 : 20;
+                const comboBonus = Math.floor(combo / 5) * 5;
+                score += basePoints + comboBonus;
+                
+                playCorrect();
+                questionEl.classList.add('correct');
+            } else {
+                // 오답
+                combo = 0;
+                wrong++;
+                playWrong();
+                questionEl.classList.add('wrong');
+            }
+
+            updateUI();
+            answerInput.value = '';
+            
+            setTimeout(() => {
+                generateQuestion();
+            }, 200);
+        }
+
+        function updateUI() {
+            scoreEl.textContent = score;
+            comboEl.textContent = combo > 1 ? `🔥 ${combo} 콤보!` : '';
+            progressFill.style.width = `${(timeLeft / diffSettings[difficulty].time) * 100}%`;
+        }
+
+        function updateTimer() {
+            timerEl.textContent = `⏱️ ${timeLeft}`;
+            if (timeLeft <= 10) {
+                timerEl.classList.add('warning');
+                playTick();
+            } else {
+                timerEl.classList.remove('warning');
+            }
+        }
+
+        function endGame() {
+            clearInterval(timerInterval);
+            playGameOver();
+
+            // 통계 저장
+            totalGames++;
+            localStorage.setItem('mathquiz_games', totalGames);
+            
+            if (score > bestScore) {
+                bestScore = score;
+                localStorage.setItem('mathquiz_best', bestScore);
+            }
+
+            // 등급 계산
+            const grade = getGrade(score);
+
+            // 결과 화면 표시
+            gameScreen.style.display = 'none';
+            resultScreen.style.display = 'block';
+
+            document.getElementById('resultIcon').textContent = grade.icon;
+            document.getElementById('resultTitle').textContent = grade.title;
+            document.getElementById('gradeBadge').textContent = grade.badge;
+            document.getElementById('gradeBadge').className = 'grade-badge ' + grade.class;
+            document.getElementById('resultScore').textContent = score;
+            document.getElementById('correctCount').textContent = correct;
+            document.getElementById('wrongCount').textContent = wrong;
+            document.getElementById('maxCombo').textContent = maxCombo;
+        }
+
+        function getGrade(score) {
+            if (score >= 500) return { icon: '🏆', title: '천재!', badge: 'S', class: 's' };
+            if (score >= 300) return { icon: '🌟', title: '대단해요!', badge: 'A', class: 'a' };
+            if (score >= 200) return { icon: '👍', title: '잘했어요!', badge: 'B', class: 'b' };
+            if (score >= 100) return { icon: '😊', title: '좋아요!', badge: 'C', class: 'c' };
+            return { icon: '💪', title: '다시 도전!', badge: 'D', class: 'd' };
+        }
+
+        function showMenu() {
+            resultScreen.style.display = 'none';
+            menuScreen.style.display = 'flex';
+            bestScoreEl.textContent = bestScore;
+            totalGamesEl.textContent = totalGames;
+        }
+
+        // 키보드 입력
+        answerInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                checkAnswer();
+            }
+        });
+
+        // 숫자 패드 (모바일)
+        document.querySelectorAll('.numpad-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const num = btn.dataset.num;
+                
+                if (num === 'submit') {
+                    checkAnswer();
+                } else if (num === 'clear') {
+                    answerInput.value = answerInput.value.slice(0, -1);
+                } else if (num === '-') {
+                    if (answerInput.value === '') {
+                        answerInput.value = '-';
+                    }
+                } else {
+                    answerInput.value += num;
+                }
+                
+                if (navigator.vibrate) navigator.vibrate(10);
+            });
+        });
+
+        // 숫자키 지원
+        document.addEventListener('keydown', (e) => {
+            if (gameScreen.style.display === 'block') {
+                if (e.key >= '0' && e.key <= '9') {
+                    answerInput.focus();
+                }
+            }
+        });
+
+        // 메뉴에서 스페이스/엔터로 시작
+        document.addEventListener('keydown', (e) => {
+            if (menuScreen.style.display !== 'none' && (e.code === 'Space' || e.code === 'Enter')) {
+                e.preventDefault();
+                startGame();
+            }
+            if (resultScreen.style.display === 'block' && (e.code === 'Space' || e.code === 'Enter')) {
+                e.preventDefault();
+                startGame();
+            }
+        });
+    </script>
+</body>
+</html>
