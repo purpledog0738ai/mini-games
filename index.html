@@ -391,7 +391,7 @@
 
                     <button class="start-btn" data-game="${game.id}" data-url="${game.url}">
                         <div class="start-btn-fill"></div>
-                        <div class="start-btn-text">🎮 길게 눌러 시작</div>
+                        <div class="start-btn-text">🎮 ${isPC() ? '클릭하여 시작' : '길게 눌러 시작'}</div>
                     </button>
 
                     ${index < GAMES.length - 1 ? '<div class="swipe-hint"><span>⬆️</span><span>스와이프</span></div>' : ''}
@@ -443,6 +443,14 @@
         // 스타트 버튼 이벤트
         function handleStartPress(btn, isStart) {
             const fill = btn.querySelector('.start-btn-fill');
+            
+            // PC는 바로 시작
+            if (isPC() && isStart) {
+                openGame(btn.dataset.url);
+                return;
+            }
+
+            // 모바일은 길게 누르기
             if (isStart) {
                 holdProgress = 0;
                 holdTimer = setInterval(() => {
@@ -462,18 +470,51 @@
             }
         }
 
+        // PC인지 확인
+        function isPC() {
+            return !(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+        }
+
         // 게임 열기
         function openGame(url) {
             gameFrame.src = url;
             gameOverlay.classList.add('active');
             document.body.style.overflow = 'hidden';
+
+            // PC면 전체화면 요청
+            if (isPC() && gameOverlay.requestFullscreen) {
+                gameOverlay.requestFullscreen().catch(err => {
+                    console.log('전체화면 전환 실패:', err);
+                });
+            }
         }
 
         // 게임 닫기
-        closeBtn.addEventListener('click', () => {
+        function closeGame() {
             gameOverlay.classList.remove('active');
             gameFrame.src = 'about:blank';
             document.body.style.overflow = '';
+
+            // 전체화면 해제
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            }
+        }
+
+        closeBtn.addEventListener('click', closeGame);
+
+        // ESC로 나가기
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && gameOverlay.classList.contains('active')) {
+                closeGame();
+            }
+        });
+
+        // 전체화면 해제 시 게임도 닫기
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement && gameOverlay.classList.contains('active')) {
+                closeGame();
+            }
         });
 
         // 사운드 토글
