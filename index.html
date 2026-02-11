@@ -21,6 +21,29 @@
             user-select: none;
         }
 
+        /* 로딩 화면 */
+        .loading-screen {
+            position: fixed;
+            inset: 0;
+            background: #0a0a0a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            color: #fff;
+            gap: 20px;
+        }
+        .loading-screen.hidden { display: none; }
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255,255,255,0.2);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
         /* 스와이프 컨테이너 */
         .swipe-container {
             width: 100%;
@@ -120,10 +143,7 @@
             opacity: 0;
             transition: opacity 0.5s;
         }
-        .demo-container iframe.loaded {
-            opacity: 1;
-        }
-        /* 스와이프 감지용 오버레이 */
+        .demo-container iframe.loaded { opacity: 1; }
         .demo-overlay {
             position: absolute;
             inset: 0;
@@ -220,7 +240,7 @@
             50% { transform: translateX(-50%) translateY(-5px); }
         }
 
-        /* 게임 오버레이 (전체화면 게임) */
+        /* 게임 오버레이 */
         .game-overlay {
             position: fixed;
             inset: 0;
@@ -274,6 +294,11 @@
     </style>
 </head>
 <body>
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-spinner"></div>
+        <div>게임 로딩중...</div>
+    </div>
+
     <button class="sound-btn" id="soundBtn">🔊</button>
 
     <div class="swipe-container" id="swipeContainer"></div>
@@ -284,75 +309,17 @@
     </div>
 
     <script>
-        // 게임 설정 (여기에 게임 추가!)
-        const GAMES = [
-            {
-                id: 'snake',
-                title: '지렁이',
-                emoji: '🐍',
-                image: 'assets/character-snake.svg',
-                desc: '사과를 먹고 길어져라!',
-                controls: '스와이프로 방향 전환',
-                url: 'games/snake.html',
-                gradient: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-                plays: 1234,
-                likes: 89
-            },
-            {
-                id: 'flappy',
-                title: '플러피 버드',
-                emoji: '🐦',
-                image: 'assets/character-flappy.svg',
-                desc: '파이프를 피해 날아라!',
-                controls: '탭해서 점프',
-                url: 'games/flappy.html',
-                gradient: 'linear-gradient(135deg, #0d3b66 0%, #1a759f 100%)',
-                plays: 2567,
-                likes: 156
-            },
-            {
-                id: 'tetris',
-                title: '테트리스',
-                emoji: '🧱',
-                image: 'assets/character-tetris.svg',
-                desc: '블록을 쌓아 라인을 지워라!',
-                controls: '버튼으로 조작',
-                url: 'games/tetris.html',
-                gradient: 'linear-gradient(135deg, #1a1a2e 0%, #2d132c 100%)',
-                plays: 3891,
-                likes: 234
-            },
-            {
-                id: '2048',
-                title: '2048',
-                emoji: '🔢',
-                image: 'assets/character-2048.svg',
-                desc: '숫자를 합쳐 2048을 만들어라!',
-                controls: '스와이프로 이동',
-                url: 'games/2048.html',
-                gradient: 'linear-gradient(135deg, #faf8ef 0%, #bbada0 100%)',
-                plays: 1892,
-                likes: 145
-            },
-            {
-                id: 'pong',
-                title: '핑퐁',
-                emoji: '🏓',
-                image: 'assets/character-pong.svg',
-                desc: 'CPU를 이겨라!',
-                controls: '터치/마우스로 패들 이동',
-                url: 'games/pong.html',
-                gradient: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%)',
-                plays: 2341,
-                likes: 178
-            }
-        ];
+        // Supabase 설정
+        const SUPABASE_URL = 'https://humbcawkqvsoydojqrvl.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh1bWJjYXdrcXZzb3lkb2pxcnZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4MDQ1NjksImV4cCI6MjA4NjM4MDU2OX0.mLcg1-ZGIiaaSQ-bHTn3QDyygqd5wsaup3nFfKwDyJA';
 
+        let GAMES = [];
         const swipeContainer = document.getElementById('swipeContainer');
         const gameOverlay = document.getElementById('gameOverlay');
         const gameFrame = document.getElementById('gameFrame');
         const closeBtn = document.getElementById('closeBtn');
         const soundBtn = document.getElementById('soundBtn');
+        const loadingScreen = document.getElementById('loadingScreen');
 
         let soundOn = true;
         let currentGameIndex = 0;
@@ -360,8 +327,41 @@
         let holdProgress = 0;
         const HOLD_DURATION = 2000;
 
+        // Supabase에서 게임 목록 가져오기
+        async function fetchGames() {
+            try {
+                const response = await fetch(
+                    `${SUPABASE_URL}/rest/v1/games?select=*&active=eq.true&order=sort_order`,
+                    {
+                        headers: {
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                        }
+                    }
+                );
+                const data = await response.json();
+                GAMES = data.map(g => ({
+                    id: g.slug,
+                    title: g.title,
+                    emoji: g.emoji,
+                    image: g.image,
+                    desc: g.description,
+                    controls: g.controls,
+                    url: g.url,
+                    gradient: g.gradient,
+                    plays: g.plays,
+                    likes: g.likes
+                }));
+                return GAMES;
+            } catch (error) {
+                console.error('게임 로딩 실패:', error);
+                return [];
+            }
+        }
+
         // 슬라이드 생성
         function createSlides() {
+            swipeContainer.innerHTML = '';
             GAMES.forEach((game, index) => {
                 const slide = document.createElement('div');
                 slide.className = 'game-slide';
@@ -400,7 +400,16 @@
                 swipeContainer.appendChild(slide);
             });
 
-            // 데모 로드
+            // 버튼 이벤트 등록
+            document.querySelectorAll('.start-btn').forEach(btn => {
+                btn.addEventListener('touchstart', (e) => { e.preventDefault(); handleStartPress(btn, true); });
+                btn.addEventListener('touchend', () => handleStartPress(btn, false));
+                btn.addEventListener('touchcancel', () => handleStartPress(btn, false));
+                btn.addEventListener('mousedown', () => handleStartPress(btn, true));
+                btn.addEventListener('mouseup', () => handleStartPress(btn, false));
+                btn.addEventListener('mouseleave', () => handleStartPress(btn, false));
+            });
+
             loadVisibleDemos();
         }
 
@@ -434,20 +443,14 @@
         // 스타트 버튼 이벤트
         function handleStartPress(btn, isStart) {
             const fill = btn.querySelector('.start-btn-fill');
-            const text = btn.querySelector('.start-btn-text');
-
             if (isStart) {
                 holdProgress = 0;
                 holdTimer = setInterval(() => {
                     holdProgress += 50;
-                    const percent = (holdProgress / HOLD_DURATION) * 100;
-                    fill.style.width = percent + '%';
-
+                    fill.style.width = (holdProgress / HOLD_DURATION) * 100 + '%';
                     if (holdProgress >= HOLD_DURATION) {
                         clearInterval(holdTimer);
-                        // 햅틱 피드백
                         if (navigator.vibrate) navigator.vibrate(50);
-                        // 게임 시작
                         openGame(btn.dataset.url);
                         fill.style.width = '0%';
                     }
@@ -458,27 +461,6 @@
                 holdProgress = 0;
             }
         }
-
-        document.querySelectorAll || createSlides();
-
-        document.addEventListener('DOMContentLoaded', () => {
-            createSlides();
-
-            document.querySelectorAll('.start-btn').forEach(btn => {
-                // 터치
-                btn.addEventListener('touchstart', (e) => {
-                    e.preventDefault();
-                    handleStartPress(btn, true);
-                });
-                btn.addEventListener('touchend', () => handleStartPress(btn, false));
-                btn.addEventListener('touchcancel', () => handleStartPress(btn, false));
-
-                // 마우스
-                btn.addEventListener('mousedown', () => handleStartPress(btn, true));
-                btn.addEventListener('mouseup', () => handleStartPress(btn, false));
-                btn.addEventListener('mouseleave', () => handleStartPress(btn, false));
-            });
-        });
 
         // 게임 열기
         function openGame(url) {
@@ -513,29 +495,28 @@
 
         document.addEventListener('touchend', (e) => {
             if (e.target.closest('.demo-overlay')) {
-                const touchEndY = e.changedTouches[0].clientY;
-                const deltaY = touchStartY - touchEndY;
+                const deltaY = touchStartY - e.changedTouches[0].clientY;
                 const deltaTime = Date.now() - touchStartTime;
                 
-                // 스와이프 감지 (50px 이상, 300ms 이내)
                 if (Math.abs(deltaY) > 50 && deltaTime < 300) {
                     const slideHeight = window.innerHeight;
                     if (deltaY > 0 && currentGameIndex < GAMES.length - 1) {
-                        // 위로 스와이프 - 다음 게임
-                        swipeContainer.scrollTo({
-                            top: (currentGameIndex + 1) * slideHeight,
-                            behavior: 'smooth'
-                        });
+                        swipeContainer.scrollTo({ top: (currentGameIndex + 1) * slideHeight, behavior: 'smooth' });
                     } else if (deltaY < 0 && currentGameIndex > 0) {
-                        // 아래로 스와이프 - 이전 게임
-                        swipeContainer.scrollTo({
-                            top: (currentGameIndex - 1) * slideHeight,
-                            behavior: 'smooth'
-                        });
+                        swipeContainer.scrollTo({ top: (currentGameIndex - 1) * slideHeight, behavior: 'smooth' });
                     }
                 }
             }
         }, { passive: true });
+
+        // 앱 시작
+        async function init() {
+            await fetchGames();
+            createSlides();
+            loadingScreen.classList.add('hidden');
+        }
+
+        init();
     </script>
 </body>
 </html>
