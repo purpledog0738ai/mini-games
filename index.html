@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0a0a0a">
+    <title>🎮 Mini Games</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #0a0a0a;
+            font-family: 'Segoe UI', -apple-system, sans-serif;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        /* 스와이프 컨테이너 */
+        .swipe-container {
+            width: 100%;
+            height: 100%;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .swipe-container::-webkit-scrollbar { display: none; }
+
+        /* 게임 슬라이드 */
+        .game-slide {
+            width: 100%;
+            height: 100vh;
+            height: 100dvh;
+            scroll-snap-align: start;
+            scroll-snap-stop: always;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* 배경 그라데이션 */
+        .game-slide::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--bg-gradient);
+            z-index: 0;
+        }
+
+        /* 게임 정보 */
+        .game-info {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            color: #fff;
+            padding: 20px;
+        }
+        .game-emoji {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 20px;
+            filter: drop-shadow(0 0 20px rgba(255,255,255,0.3));
+        }
+        .game-emoji img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .game-title {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+        .game-desc {
+            font-size: 16px;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 20px;
+        }
+        .game-stats {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            font-size: 14px;
+            color: rgba(255,255,255,0.6);
+        }
+        .game-stats span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* 데모 프리뷰 */
+        .demo-container {
+            position: relative;
+            z-index: 1;
+            width: 90%;
+            max-width: 350px;
+            aspect-ratio: 9/14;
+            border-radius: 20px;
+            overflow: hidden;
+            background: rgba(0,0,0,0.5);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            margin: 20px 0;
+        }
+        .demo-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        .demo-container iframe.loaded {
+            opacity: 1;
+        }
+        /* 스와이프 감지용 오버레이 */
+        .demo-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 5;
+            background: transparent;
+        }
+        .demo-loading {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.8);
+        }
+        .demo-loading.hidden { display: none; }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.2);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* 스타트 버튼 */
+        .start-btn {
+            position: relative;
+            z-index: 1;
+            width: 200px;
+            height: 60px;
+            border: none;
+            border-radius: 30px;
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            color: #fff;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            overflow: hidden;
+            transition: transform 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .start-btn:active { transform: scale(0.98); }
+        .start-btn-fill {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            transition: width 0.1s linear;
+            border-radius: 30px;
+        }
+        .start-btn-text {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            height: 100%;
+        }
+
+        /* 컨트롤 힌트 */
+        .control-hint {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.5);
+            font-size: 14px;
+            text-align: center;
+            z-index: 1;
+        }
+
+        /* 스와이프 힌트 */
+        .swipe-hint {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.4);
+            font-size: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            z-index: 1;
+            animation: bounce 2s infinite;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(-5px); }
+        }
+
+        /* 게임 오버레이 (전체화면 게임) */
+        .game-overlay {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 1000;
+            display: none;
+        }
+        .game-overlay.active { display: block; }
+        .game-overlay iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .close-btn {
+            position: absolute;
+            top: max(20px, env(safe-area-inset-top));
+            right: 20px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            color: #fff;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .close-btn:active { background: rgba(255,255,255,0.3); }
+
+        /* 사운드 토글 */
+        .sound-btn {
+            position: absolute;
+            top: max(20px, env(safe-area-inset-top));
+            left: 20px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 10;
+            -webkit-tap-highlight-color: transparent;
+        }
+    </style>
+</head>
+<body>
+    <button class="sound-btn" id="soundBtn">🔊</button>
+
+    <div class="swipe-container" id="swipeContainer"></div>
+
+    <div class="game-overlay" id="gameOverlay">
+        <button class="close-btn" id="closeBtn">✕</button>
+        <iframe id="gameFrame" src="about:blank"></iframe>
+    </div>
+
+    <script>
+        // 게임 설정 (여기에 게임 추가!)
+        const GAMES = [
+            {
+                id: 'snake',
+                title: '지렁이',
+                emoji: '🐍',
+                image: 'assets/character-snake.svg',
+                desc: '사과를 먹고 길어져라!',
+                controls: '스와이프로 방향 전환',
+                url: 'games/snake.html',
+                gradient: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+                plays: 1234,
+                likes: 89
+            },
+            {
+                id: 'flappy',
+                title: '플러피 버드',
+                emoji: '🐦',
+                image: 'assets/character-flappy.svg',
+                desc: '파이프를 피해 날아라!',
+                controls: '탭해서 점프',
+                url: 'games/flappy.html',
+                gradient: 'linear-gradient(135deg, #0d3b66 0%, #1a759f 100%)',
+                plays: 2567,
+                likes: 156
+            },
+            {
+                id: 'tetris',
+                title: '테트리스',
+                emoji: '🧱',
+                image: 'assets/character-tetris.svg',
+                desc: '블록을 쌓아 라인을 지워라!',
+                controls: '버튼으로 조작',
+                url: 'games/tetris.html',
+                gradient: 'linear-gradient(135deg, #1a1a2e 0%, #2d132c 100%)',
+                plays: 3891,
+                likes: 234
+            },
+            {
+                id: '2048',
+                title: '2048',
+                emoji: '🔢',
+                image: 'assets/character-2048.svg',
+                desc: '숫자를 합쳐 2048을 만들어라!',
+                controls: '스와이프로 이동',
+                url: 'games/2048.html',
+                gradient: 'linear-gradient(135deg, #faf8ef 0%, #bbada0 100%)',
+                plays: 1892,
+                likes: 145
+            },
+            {
+                id: 'pong',
+                title: '핑퐁',
+                emoji: '🏓',
+                image: 'assets/character-pong.svg',
+                desc: 'CPU를 이겨라!',
+                controls: '터치/마우스로 패들 이동',
+                url: 'games/pong.html',
+                gradient: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%)',
+                plays: 2341,
+                likes: 178
+            }
+        ];
+
+        const swipeContainer = document.getElementById('swipeContainer');
+        const gameOverlay = document.getElementById('gameOverlay');
+        const gameFrame = document.getElementById('gameFrame');
+        const closeBtn = document.getElementById('closeBtn');
+        const soundBtn = document.getElementById('soundBtn');
+
+        let soundOn = true;
+        let currentGameIndex = 0;
+        let holdTimer = null;
+        let holdProgress = 0;
+        const HOLD_DURATION = 2000;
+
+        // 슬라이드 생성
+        function createSlides() {
+            GAMES.forEach((game, index) => {
+                const slide = document.createElement('div');
+                slide.className = 'game-slide';
+                slide.style.setProperty('--bg-gradient', game.gradient);
+                slide.dataset.index = index;
+
+                slide.innerHTML = `
+                    <div class="game-info">
+                        <div class="game-emoji">${game.image ? `<img src="${game.image}" alt="${game.title}">` : game.emoji}</div>
+                        <h1 class="game-title">${game.title}</h1>
+                        <p class="game-desc">${game.desc}</p>
+                        <div class="game-stats">
+                            <span>▶️ ${game.plays.toLocaleString()}</span>
+                            <span>❤️ ${game.likes}</span>
+                        </div>
+                    </div>
+
+                    <div class="demo-container">
+                        <div class="demo-loading">
+                            <div class="spinner"></div>
+                        </div>
+                        <iframe data-src="${game.url}" loading="lazy"></iframe>
+                        <div class="demo-overlay"></div>
+                    </div>
+
+                    <div class="control-hint">${game.controls}</div>
+
+                    <button class="start-btn" data-game="${game.id}" data-url="${game.url}">
+                        <div class="start-btn-fill"></div>
+                        <div class="start-btn-text">🎮 길게 눌러 시작</div>
+                    </button>
+
+                    ${index < GAMES.length - 1 ? '<div class="swipe-hint"><span>⬆️</span><span>스와이프</span></div>' : ''}
+                `;
+
+                swipeContainer.appendChild(slide);
+            });
+
+            // 데모 로드
+            loadVisibleDemos();
+        }
+
+        // 보이는 슬라이드의 데모 로드
+        function loadVisibleDemos() {
+            const slides = document.querySelectorAll('.game-slide');
+            slides.forEach((slide, index) => {
+                const iframe = slide.querySelector('iframe');
+                const loading = slide.querySelector('.demo-loading');
+                
+                if (Math.abs(index - currentGameIndex) <= 1 && !iframe.src.includes('http')) {
+                    iframe.src = iframe.dataset.src;
+                    iframe.onload = () => {
+                        iframe.classList.add('loaded');
+                        loading.classList.add('hidden');
+                    };
+                }
+            });
+        }
+
+        // 스크롤 이벤트
+        swipeContainer.addEventListener('scroll', () => {
+            const slideHeight = window.innerHeight;
+            const newIndex = Math.round(swipeContainer.scrollTop / slideHeight);
+            if (newIndex !== currentGameIndex) {
+                currentGameIndex = newIndex;
+                loadVisibleDemos();
+            }
+        });
+
+        // 스타트 버튼 이벤트
+        function handleStartPress(btn, isStart) {
+            const fill = btn.querySelector('.start-btn-fill');
+            const text = btn.querySelector('.start-btn-text');
+
+            if (isStart) {
+                holdProgress = 0;
+                holdTimer = setInterval(() => {
+                    holdProgress += 50;
+                    const percent = (holdProgress / HOLD_DURATION) * 100;
+                    fill.style.width = percent + '%';
+
+                    if (holdProgress >= HOLD_DURATION) {
+                        clearInterval(holdTimer);
+                        // 햅틱 피드백
+                        if (navigator.vibrate) navigator.vibrate(50);
+                        // 게임 시작
+                        openGame(btn.dataset.url);
+                        fill.style.width = '0%';
+                    }
+                }, 50);
+            } else {
+                clearInterval(holdTimer);
+                fill.style.width = '0%';
+                holdProgress = 0;
+            }
+        }
+
+        document.querySelectorAll || createSlides();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            createSlides();
+
+            document.querySelectorAll('.start-btn').forEach(btn => {
+                // 터치
+                btn.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    handleStartPress(btn, true);
+                });
+                btn.addEventListener('touchend', () => handleStartPress(btn, false));
+                btn.addEventListener('touchcancel', () => handleStartPress(btn, false));
+
+                // 마우스
+                btn.addEventListener('mousedown', () => handleStartPress(btn, true));
+                btn.addEventListener('mouseup', () => handleStartPress(btn, false));
+                btn.addEventListener('mouseleave', () => handleStartPress(btn, false));
+            });
+        });
+
+        // 게임 열기
+        function openGame(url) {
+            gameFrame.src = url;
+            gameOverlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        // 게임 닫기
+        closeBtn.addEventListener('click', () => {
+            gameOverlay.classList.remove('active');
+            gameFrame.src = 'about:blank';
+            document.body.style.overflow = '';
+        });
+
+        // 사운드 토글
+        soundBtn.addEventListener('click', () => {
+            soundOn = !soundOn;
+            soundBtn.textContent = soundOn ? '🔊' : '🔇';
+        });
+
+        // 데모 오버레이에서 스와이프 감지
+        let touchStartY = 0;
+        let touchStartTime = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            if (e.target.closest('.demo-overlay')) {
+                touchStartY = e.touches[0].clientY;
+                touchStartTime = Date.now();
+            }
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            if (e.target.closest('.demo-overlay')) {
+                const touchEndY = e.changedTouches[0].clientY;
+                const deltaY = touchStartY - touchEndY;
+                const deltaTime = Date.now() - touchStartTime;
+                
+                // 스와이프 감지 (50px 이상, 300ms 이내)
+                if (Math.abs(deltaY) > 50 && deltaTime < 300) {
+                    const slideHeight = window.innerHeight;
+                    if (deltaY > 0 && currentGameIndex < GAMES.length - 1) {
+                        // 위로 스와이프 - 다음 게임
+                        swipeContainer.scrollTo({
+                            top: (currentGameIndex + 1) * slideHeight,
+                            behavior: 'smooth'
+                        });
+                    } else if (deltaY < 0 && currentGameIndex > 0) {
+                        // 아래로 스와이프 - 이전 게임
+                        swipeContainer.scrollTo({
+                            top: (currentGameIndex - 1) * slideHeight,
+                            behavior: 'smooth'
+                        });
+                    }
+                }
+            }
+        }, { passive: true });
+    </script>
+</body>
+</html>

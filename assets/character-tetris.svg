@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- 미니 - 테트리스 모드 (보라색 + 블록 패턴) -->
+  
+  <defs>
+    <linearGradient id="tetrisGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e040fb"/>
+      <stop offset="100%" style="stop-color:#9c27b0"/>
+    </linearGradient>
+  </defs>
+  
+  <ellipse cx="52" cy="88" rx="25" ry="8" fill="rgba(0,0,0,0.2)"/>
+  
+  <!-- 몸통 (약간 각진 느낌) -->
+  <rect x="15" y="20" rx="15" ry="15" width="70" height="70" fill="url(#tetrisGrad)"/>
+  
+  <!-- 하이라이트 -->
+  <rect x="20" y="25" rx="8" ry="8" width="25" height="15" fill="white" opacity="0.3"/>
+  
+  <!-- 블록 패턴 -->
+  <rect x="20" y="75" width="12" height="12" fill="rgba(255,255,255,0.2)" rx="2"/>
+  <rect x="35" y="75" width="12" height="12" fill="rgba(255,255,255,0.2)" rx="2"/>
+  <rect x="50" y="75" width="12" height="12" fill="rgba(255,255,255,0.2)" rx="2"/>
+  <rect x="65" y="75" width="12" height="12" fill="rgba(255,255,255,0.2)" rx="2"/>
+  
+  <!-- 눈 -->
+  <ellipse cx="38" cy="50" rx="10" ry="12" fill="white"/>
+  <circle cx="40" cy="52" r="6" fill="#333"/>
+  <circle cx="42" cy="50" r="2" fill="white"/>
+  
+  <ellipse cx="62" cy="50" rx="10" ry="12" fill="white"/>
+  <circle cx="64" cy="52" r="6" fill="#333"/>
+  <circle cx="66" cy="50" r="2" fill="white"/>
+  
+  <!-- 볼터치 -->
+  <ellipse cx="28" cy="60" rx="6" ry="4" fill="#ff9999" opacity="0.5"/>
+  <ellipse cx="72" cy="60" rx="6" ry="4" fill="#ff9999" opacity="0.5"/>
+  
+  <!-- 입 -->
+  <path d="M 40 68 Q 50 75 60 68" stroke="#333" stroke-width="3" fill="none" stroke-linecap="round"/>
+</svg>

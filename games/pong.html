@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0a0a0a">
+    <title>🏓 핑퐁</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background: #0a0a0a;
+            touch-action: none;
+            user-select: none;
+        }
+        body { display: flex; align-items: center; justify-content: center; }
+        canvas { border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <canvas id="game"></canvas>
+    <script src="../framework/game-wrapper.js"></script>
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+
+        let W, H, gameRunning = false;
+        const paddleH = 80, paddleW = 12, ballSize = 12;
+        let playerY, cpuY, ballX, ballY, ballVX, ballVY;
+        let playerScore = 0, cpuScore = 0;
+        let targetY;
+
+        function resize() {
+            const maxW = Math.min(window.innerWidth - 20, 500);
+            const maxH = Math.min(window.innerHeight - 100, 700);
+            W = maxW; H = maxH;
+            canvas.width = W; canvas.height = H;
+            reset();
+        }
+
+        function reset() {
+            playerY = H / 2 - paddleH / 2;
+            cpuY = H / 2 - paddleH / 2;
+            ballX = W / 2;
+            ballY = H / 2;
+            ballVX = (Math.random() > 0.5 ? 1 : -1) * 5;
+            ballVY = (Math.random() - 0.5) * 6;
+            targetY = playerY;
+        }
+
+        function update() {
+            if (!gameRunning) return;
+
+            // 공 이동
+            ballX += ballVX;
+            ballY += ballVY;
+
+            // 상하 벽 반사
+            if (ballY - ballSize / 2 < 0 || ballY + ballSize / 2 > H) {
+                ballVY *= -1;
+                ballY = Math.max(ballSize / 2, Math.min(H - ballSize / 2, ballY));
+            }
+
+            // 플레이어 패들 (오른쪽)
+            playerY += (targetY - playerY) * 0.15;
+            playerY = Math.max(0, Math.min(H - paddleH, playerY));
+
+            // CPU 패들 (왼쪽) - 약간의 딜레이
+            const cpuTarget = ballY - paddleH / 2;
+            cpuY += (cpuTarget - cpuY) * 0.06;
+            cpuY = Math.max(0, Math.min(H - paddleH, cpuY));
+
+            // 플레이어 패들 충돌 (오른쪽)
+            if (ballX + ballSize / 2 > W - paddleW - 15 && 
+                ballY > playerY && ballY < playerY + paddleH) {
+                ballVX = -Math.abs(ballVX) * 1.05;
+                const hit = (ballY - playerY - paddleH / 2) / (paddleH / 2);
+                ballVY = hit * 7;
+                ballX = W - paddleW - 15 - ballSize / 2;
+            }
+
+            // CPU 패들 충돌 (왼쪽)
+            if (ballX - ballSize / 2 < paddleW + 15 && 
+                ballY > cpuY && ballY < cpuY + paddleH) {
+                ballVX = Math.abs(ballVX) * 1.05;
+                const hit = (ballY - cpuY - paddleH / 2) / (paddleH / 2);
+                ballVY = hit * 7;
+                ballX = paddleW + 15 + ballSize / 2;
+            }
+
+            // 속도 제한
+            ballVX = Math.sign(ballVX) * Math.min(Math.abs(ballVX), 15);
+            ballVY = Math.sign(ballVY) * Math.min(Math.abs(ballVY), 10);
+
+            // 점수
+            if (ballX < 0) {
+                playerScore++;
+                reset();
+            } else if (ballX > W) {
+                cpuScore++;
+                if (cpuScore >= 5) endGame();
+                else reset();
+            }
+        }
+
+        function draw() {
+            // 배경
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(0, 0, W, H);
+
+            // 중앙선
+            ctx.setLineDash([10, 10]);
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(W / 2, 0);
+            ctx.lineTo(W / 2, H);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 점수
+            ctx.font = 'bold 48px "Segoe UI"';
+            ctx.fillStyle = '#333';
+            ctx.textAlign = 'center';
+            ctx.fillText(cpuScore, W / 4, 60);
+            ctx.fillText(playerScore, W * 3 / 4, 60);
+
+            // CPU 패들 (왼쪽)
+            ctx.fillStyle = '#ff5252';
+            ctx.shadowColor = '#ff5252';
+            ctx.shadowBlur = 15;
+            ctx.fillRect(15, cpuY, paddleW, paddleH);
+
+            // 플레이어 패들 (오른쪽)
+            ctx.fillStyle = '#00d4ff';
+            ctx.shadowColor = '#00d4ff';
+            ctx.fillRect(W - paddleW - 15, playerY, paddleW, paddleH);
+
+            // 공
+            ctx.fillStyle = '#fff';
+            ctx.shadowColor = '#fff';
+            ctx.shadowBlur = 20;
+            ctx.beginPath();
+            ctx.arc(ballX, ballY, ballSize, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // 라벨
+            ctx.font = '14px "Segoe UI"';
+            ctx.fillStyle = '#666';
+            ctx.fillText('CPU', W / 4, H - 20);
+            ctx.fillText('YOU', W * 3 / 4, H - 20);
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function endGame() {
+            gameRunning = false;
+            window.gameOver(playerScore);
+        }
+
+        // 마우스
+        canvas.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            targetY = e.clientY - rect.top - paddleH / 2;
+        });
+
+        // 터치
+        canvas.addEventListener('touchmove', e => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            targetY = e.touches[0].clientY - rect.top - paddleH / 2;
+        }, {passive: false});
+
+        canvas.addEventListener('touchstart', e => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            targetY = e.touches[0].clientY - rect.top - paddleH / 2;
+        }, {passive: false});
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        window.GAME = {
+            name: '핑퐁',
+            emoji: '🏓',
+            image: '../assets/character-pong.svg',
+            start: () => { gameRunning = true; playerScore = 0; cpuScore = 0; reset(); },
+            reset: () => { playerScore = 0; cpuScore = 0; reset(); draw(); },
+            stop: () => { gameRunning = false; }
+        };
+        draw();
+        gameLoop();
+    </script>
+</body>
+</html>

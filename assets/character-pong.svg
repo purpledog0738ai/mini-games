@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- 미니 - 핑퐁 모드 (청록색 + 패들) -->
+  
+  <defs>
+    <linearGradient id="pongGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00f5ff"/>
+      <stop offset="100%" style="stop-color:#0099cc"/>
+    </linearGradient>
+  </defs>
+  
+  <ellipse cx="52" cy="88" rx="25" ry="8" fill="rgba(0,0,0,0.2)"/>
+  
+  <!-- 몸통 -->
+  <circle cx="50" cy="55" r="35" fill="url(#pongGrad)"/>
+  
+  <!-- 하이라이트 -->
+  <ellipse cx="40" cy="40" rx="15" ry="10" fill="white" opacity="0.3"/>
+  
+  <!-- 눈 -->
+  <ellipse cx="38" cy="50" rx="10" ry="12" fill="white"/>
+  <circle cx="40" cy="52" r="6" fill="#333"/>
+  <circle cx="42" cy="50" r="2" fill="white"/>
+  
+  <ellipse cx="62" cy="50" rx="10" ry="12" fill="white"/>
+  <circle cx="64" cy="52" r="6" fill="#333"/>
+  <circle cx="66" cy="50" r="2" fill="white"/>
+  
+  <!-- 볼터치 -->
+  <ellipse cx="28" cy="60" rx="6" ry="4" fill="#ff9999" opacity="0.5"/>
+  <ellipse cx="72" cy="60" rx="6" ry="4" fill="#ff9999" opacity="0.5"/>
+  
+  <!-- 입 -->
+  <path d="M 40 68 Q 50 76 60 68" stroke="#333" stroke-width="3" fill="none" stroke-linecap="round"/>
+  
+  <!-- 패들 (왼손) -->
+  <rect x="5" y="45" width="8" height="25" rx="4" fill="#ff5252"/>
+  
+  <!-- 패들 (오른손) -->
+  <rect x="87" y="45" width="8" height="25" rx="4" fill="#00d4ff"/>
+</svg>

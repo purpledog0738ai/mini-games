@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- 미니 - 플러피 모드 (노란색 + 날개 + 부리) -->
+  
+  <defs>
+    <linearGradient id="birdGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffe066"/>
+      <stop offset="100%" style="stop-color:#f5c842"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- 날개 (왼쪽) -->
+  <ellipse cx="18" cy="55" rx="15" ry="10" fill="#e6a817" transform="rotate(-20 18 55)"/>
+  
+  <!-- 날개 (오른쪽) -->
+  <ellipse cx="82" cy="55" rx="15" ry="10" fill="#e6a817" transform="rotate(20 82 55)"/>
+  
+  <!-- 몸통 -->
+  <circle cx="50" cy="55" r="35" fill="url(#birdGrad)"/>
+  
+  <!-- 하이라이트 -->
+  <ellipse cx="40" cy="40" rx="15" ry="10" fill="white" opacity="0.4"/>
+  
+  <!-- 눈 -->
+  <ellipse cx="38" cy="50" rx="10" ry="12" fill="white"/>
+  <circle cx="40" cy="52" r="6" fill="#333"/>
+  <circle cx="42" cy="50" r="2" fill="white"/>
+  
+  <ellipse cx="62" cy="50" rx="10" ry="12" fill="white"/>
+  <circle cx="64" cy="52" r="6" fill="#333"/>
+  <circle cx="66" cy="50" r="2" fill="white"/>
+  
+  <!-- 볼터치 -->
+  <ellipse cx="28" cy="60" rx="6" ry="4" fill="#ff9999" opacity="0.5"/>
+  <ellipse cx="72" cy="60" rx="6" ry="4" fill="#ff9999" opacity="0.5"/>
+  
+  <!-- 부리 -->
+  <path d="M 45 68 L 50 80 L 55 68 Z" fill="#e74c3c"/>
+</svg>
