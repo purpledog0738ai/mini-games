@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Tic-Tac-Toe - Mini Games</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        body {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            padding: 15px;
+            overflow: hidden;
+        }
+        .header {
+            color: white;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+        .info-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 320px;
+            margin-bottom: 15px;
+            color: white;
+            font-size: 1rem;
+        }
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(255,255,255,0.15);
+            padding: 10px 18px;
+            border-radius: 12px;
+            backdrop-filter: blur(5px);
+        }
+        .score {
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .turn-indicator {
+            color: white;
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            padding: 10px 25px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 25px;
+            backdrop-filter: blur(5px);
+        }
+        .turn-indicator.x { background: rgba(239, 68, 68, 0.4); }
+        .turn-indicator.o { background: rgba(59, 130, 246, 0.4); }
+
+        #board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            padding: 15px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+        }
+        .cell {
+            width: 90px;
+            height: 90px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .cell:hover:not(.taken) {
+            transform: scale(1.02);
+            background: rgba(255,255,255,1);
+        }
+        .cell:active:not(.taken) {
+            transform: scale(0.98);
+        }
+        .cell.taken {
+            cursor: default;
+        }
+        .cell.x {
+            color: #ef4444;
+            animation: pop 0.3s ease-out;
+        }
+        .cell.o {
+            color: #3b82f6;
+            animation: pop 0.3s ease-out;
+        }
+        .cell.win {
+            animation: winPulse 0.5s ease-out;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+        }
+        @keyframes pop {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes winPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .btn {
+            background: linear-gradient(145deg, #ec4899, #db2777);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(236, 72, 153, 0.4);
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+        .btn.secondary {
+            background: linear-gradient(145deg, #64748b, #475569);
+        }
+        .btn.secondary:hover {
+            box-shadow: 0 5px 20px rgba(100, 116, 139, 0.4);
+        }
+
+        .mode-toggle {
+            display: flex;
+            gap: 5px;
+            background: rgba(255,255,255,0.1);
+            padding: 5px;
+            border-radius: 30px;
+            margin-top: 15px;
+        }
+        .mode-btn {
+            background: transparent;
+            color: rgba(255,255,255,0.7);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .mode-btn.active {
+            background: rgba(255,255,255,0.25);
+            color: white;
+            font-weight: bold;
+        }
+
+        .tip {
+            color: rgba(255,255,255,0.6);
+            font-size: 0.85rem;
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        .overlay.show {
+            display: flex;
+        }
+        .modal {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            max-width: 90%;
+        }
+        .modal h2 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        .modal p {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            color: rgba(255,255,255,0.8);
+        }
+        .modal .winner-symbol {
+            font-size: 4rem;
+            margin-bottom: 15px;
+        }
+        .modal .winner-symbol.x { color: #ef4444; }
+        .modal .winner-symbol.o { color: #3b82f6; }
+        .modal .winner-symbol.draw { color: #fbbf24; }
+
+        @media (max-width: 380px) {
+            .cell {
+                width: 75px;
+                height: 75px;
+                font-size: 2.8rem;
+            }
+            #board {
+                gap: 8px;
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⭕ Tic-Tac-Toe</h1>
+    </div>
+
+    <div class="info-bar">
+        <div class="info-item">❌ <span class="score" id="xScore">0</span></div>
+        <div class="info-item">🤝 <span class="score" id="drawScore">0</span></div>
+        <div class="info-item">⭕ <span class="score" id="oScore">0</span></div>
+    </div>
+
+    <div class="turn-indicator x" id="turnIndicator">❌ X의 차례</div>
+
+    <div id="board"></div>
+
+    <div class="mode-toggle">
+        <button class="mode-btn active" data-mode="ai" onclick="setMode('ai')">🤖 vs AI</button>
+        <button class="mode-btn" data-mode="pvp" onclick="setMode('pvp')">👥 2인 대전</button>
+    </div>
+
+    <div class="controls">
+        <button class="btn" onclick="resetGame()">🔄 새 게임</button>
+        <button class="btn secondary" onclick="resetScore()">📊 점수 리셋</button>
+    </div>
+
+    <p class="tip">가로, 세로, 대각선으로 3개를 먼저 맞추세요!</p>
+
+    <div class="overlay" id="overlay">
+        <div class="modal">
+            <div class="winner-symbol" id="winnerSymbol">❌</div>
+            <h2 id="resultTitle">X 승리!</h2>
+            <p id="resultText">멋지네요!</p>
+            <button class="btn" onclick="hideOverlay(); resetGame();">다시하기</button>
+        </div>
+    </div>
+
+    <script>
+        let board = Array(9).fill(null);
+        let currentPlayer = 'X';
+        let gameOver = false;
+        let vsAI = true;
+        let scores = { X: 0, O: 0, draw: 0 };
+
+        const boardEl = document.getElementById('board');
+        const turnEl = document.getElementById('turnIndicator');
+        const xScoreEl = document.getElementById('xScore');
+        const oScoreEl = document.getElementById('oScore');
+        const drawScoreEl = document.getElementById('drawScore');
+
+        const WINNING_COMBOS = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8], // 가로
+            [0, 3, 6], [1, 4, 7], [2, 5, 8], // 세로
+            [0, 4, 8], [2, 4, 6] // 대각선
+        ];
+
+        function render() {
+            boardEl.innerHTML = '';
+            board.forEach((cell, i) => {
+                const cellEl = document.createElement('div');
+                cellEl.className = 'cell' + (cell ? ' taken ' + cell.toLowerCase() : '');
+                cellEl.textContent = cell === 'X' ? '❌' : cell === 'O' ? '⭕' : '';
+                cellEl.addEventListener('click', () => handleClick(i));
+                boardEl.appendChild(cellEl);
+            });
+
+            turnEl.textContent = currentPlayer === 'X' ? '❌ X의 차례' : '⭕ O의 차례';
+            turnEl.className = 'turn-indicator ' + currentPlayer.toLowerCase();
+        }
+
+        function handleClick(i) {
+            if (board[i] || gameOver) return;
+            if (vsAI && currentPlayer === 'O') return;
+
+            makeMove(i);
+
+            if (!gameOver && vsAI && currentPlayer === 'O') {
+                setTimeout(aiMove, 400);
+            }
+        }
+
+        function makeMove(i) {
+            board[i] = currentPlayer;
+            render();
+
+            const winner = checkWinner();
+            if (winner) {
+                gameOver = true;
+                highlightWinner(winner.combo);
+                setTimeout(() => showResult(winner.player), 600);
+                return;
+            }
+
+            if (!board.includes(null)) {
+                gameOver = true;
+                setTimeout(() => showResult('draw'), 400);
+                return;
+            }
+
+            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+            render();
+        }
+
+        function checkWinner() {
+            for (const combo of WINNING_COMBOS) {
+                const [a, b, c] = combo;
+                if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+                    return { player: board[a], combo };
+                }
+            }
+            return null;
+        }
+
+        function highlightWinner(combo) {
+            const cells = boardEl.querySelectorAll('.cell');
+            combo.forEach(i => cells[i].classList.add('win'));
+        }
+
+        function aiMove() {
+            if (gameOver) return;
+
+            // 1. 이길 수 있으면 이기기
+            const winMove = findWinningMove('O');
+            if (winMove !== -1) {
+                makeMove(winMove);
+                return;
+            }
+
+            // 2. 막아야 하면 막기
+            const blockMove = findWinningMove('X');
+            if (blockMove !== -1) {
+                makeMove(blockMove);
+                return;
+            }
+
+            // 3. 중앙 선점
+            if (!board[4]) {
+                makeMove(4);
+                return;
+            }
+
+            // 4. 코너 선점
+            const corners = [0, 2, 6, 8].filter(i => !board[i]);
+            if (corners.length) {
+                makeMove(corners[Math.floor(Math.random() * corners.length)]);
+                return;
+            }
+
+            // 5. 아무 빈 칸
+            const empty = board.map((v, i) => v === null ? i : null).filter(v => v !== null);
+            if (empty.length) {
+                makeMove(empty[Math.floor(Math.random() * empty.length)]);
+            }
+        }
+
+        function findWinningMove(player) {
+            for (const combo of WINNING_COMBOS) {
+                const [a, b, c] = combo;
+                const values = [board[a], board[b], board[c]];
+                const playerCount = values.filter(v => v === player).length;
+                const emptyCount = values.filter(v => v === null).length;
+
+                if (playerCount === 2 && emptyCount === 1) {
+                    if (!board[a]) return a;
+                    if (!board[b]) return b;
+                    if (!board[c]) return c;
+                }
+            }
+            return -1;
+        }
+
+        function showResult(result) {
+            const overlay = document.getElementById('overlay');
+            const title = document.getElementById('resultTitle');
+            const text = document.getElementById('resultText');
+            const symbol = document.getElementById('winnerSymbol');
+
+            if (result === 'draw') {
+                symbol.textContent = '🤝';
+                symbol.className = 'winner-symbol draw';
+                title.textContent = '무승부!';
+                text.textContent = '막상막하네요!';
+                scores.draw++;
+            } else if (result === 'X') {
+                symbol.textContent = '❌';
+                symbol.className = 'winner-symbol x';
+                title.textContent = 'X 승리!';
+                text.textContent = vsAI ? '축하해요! 🎉' : 'X 플레이어 승!';
+                scores.X++;
+            } else {
+                symbol.textContent = '⭕';
+                symbol.className = 'winner-symbol o';
+                title.textContent = 'O 승리!';
+                text.textContent = vsAI ? 'AI가 이겼어요!' : 'O 플레이어 승!';
+                scores.O++;
+            }
+
+            updateScoreDisplay();
+            overlay.classList.add('show');
+        }
+
+        function hideOverlay() {
+            document.getElementById('overlay').classList.remove('show');
+        }
+
+        function updateScoreDisplay() {
+            xScoreEl.textContent = scores.X;
+            oScoreEl.textContent = scores.O;
+            drawScoreEl.textContent = scores.draw;
+        }
+
+        function resetGame() {
+            board = Array(9).fill(null);
+            currentPlayer = 'X';
+            gameOver = false;
+            render();
+        }
+
+        function resetScore() {
+            scores = { X: 0, O: 0, draw: 0 };
+            updateScoreDisplay();
+            resetGame();
+        }
+
+        function setMode(mode) {
+            vsAI = mode === 'ai';
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+            resetGame();
+        }
+
+        // 초기화
+        render();
+    </script>
+</body>
+</html>
