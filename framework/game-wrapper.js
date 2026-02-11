@@ -91,8 +91,38 @@ class GameWrapper {
                 0%, 100% { opacity: 1; }
                 50% { opacity: 0.5; }
             }
+            .exit-btn {
+                position: fixed;
+                top: max(15px, env(safe-area-inset-top));
+                left: 15px;
+                width: 44px;
+                height: 44px;
+                border-radius: 50%;
+                border: none;
+                background: rgba(255,255,255,0.15);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                color: #fff;
+                font-size: 20px;
+                cursor: pointer;
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: background 0.2s;
+                -webkit-tap-highlight-color: transparent;
+            }
+            .exit-btn:hover {
+                background: rgba(255,255,255,0.25);
+            }
+            .exit-btn:active {
+                background: rgba(255,255,255,0.35);
+            }
         `;
         document.head.appendChild(style);
+
+        // 나가기 버튼 생성
+        this.createExitButton();
 
         this.overlay = document.createElement('div');
         this.overlay.className = 'game-overlay-ui';
@@ -110,6 +140,33 @@ class GameWrapper {
             e.preventDefault();
             this.handleAction();
         });
+    }
+
+    createExitButton() {
+        const exitBtn = document.createElement('button');
+        exitBtn.className = 'exit-btn';
+        exitBtn.innerHTML = '✕';
+        exitBtn.title = '나가기';
+        document.body.appendChild(exitBtn);
+
+        exitBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.exitGame();
+        });
+    }
+
+    exitGame() {
+        // iframe 안에서 실행 중이면 부모에게 메시지 전송
+        if (window.parent !== window) {
+            window.parent.postMessage({ type: 'closeGame' }, '*');
+        } else {
+            // 직접 열린 경우 뒤로가기 또는 닫기
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.close();
+            }
+        }
     }
 
     waitForGame() {

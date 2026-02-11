@@ -528,6 +528,13 @@
 
         closeBtn.addEventListener('click', closeGame);
 
+        // iframe에서 나가기 메시지 수신
+        window.addEventListener('message', (e) => {
+            if (e.data && e.data.type === 'closeGame') {
+                closeGame();
+            }
+        });
+
         // ESC로 나가기
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && gameOverlay.classList.contains('active')) {
@@ -586,27 +593,33 @@
         let wheelTimeout = null;
         let isWheeling = false;
         
-        swipeContainer.addEventListener('wheel', (e) => {
+        document.addEventListener('wheel', (e) => {
+            // 게임 오버레이가 열려있으면 무시
+            if (gameOverlay.classList.contains('active')) return;
+            
             e.preventDefault();
             
             if (isWheeling) return;
             
             const slideHeight = window.innerHeight;
             
-            if (e.deltaY > 30 && currentGameIndex < GAMES.length - 1) {
+            // deltaY 값이 0이 아니면 스크롤
+            if (e.deltaY > 0 && currentGameIndex < GAMES.length - 1) {
                 isWheeling = true;
                 currentGameIndex++;
                 swipeContainer.scrollTo({ top: currentGameIndex * slideHeight, behavior: 'smooth' });
-            } else if (e.deltaY < -30 && currentGameIndex > 0) {
+                loadVisibleDemos();
+            } else if (e.deltaY < 0 && currentGameIndex > 0) {
                 isWheeling = true;
                 currentGameIndex--;
                 swipeContainer.scrollTo({ top: currentGameIndex * slideHeight, behavior: 'smooth' });
+                loadVisibleDemos();
             }
             
             clearTimeout(wheelTimeout);
             wheelTimeout = setTimeout(() => {
                 isWheeling = false;
-            }, 500);
+            }, 600);
         }, { passive: false });
 
         // 앱 시작
