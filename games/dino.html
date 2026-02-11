@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#f7f7f7">
+    <title>🦖 Dino Run</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background: #f7f7f7;
+            touch-action: none;
+            user-select: none;
+        }
+        body { display: flex; align-items: center; justify-content: center; }
+        canvas { border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+    </style>
+</head>
+<body>
+    <canvas id="game"></canvas>
+    <script src="../framework/game-wrapper.js"></script>
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+
+        const isPC = window.innerWidth > 768;
+        const BASE_WIDTH = isPC ? 600 : 400;
+        const BASE_HEIGHT = isPC ? 300 : 200;
+        let scale = 1, dpr = 1, gameRunning = false;
+
+        function resizeCanvas() {
+            dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const wW = window.innerWidth, wH = window.innerHeight;
+            const ratio = BASE_WIDTH / BASE_HEIGHT;
+            let dW, dH;
+            if (wW/wH > ratio) { dH = Math.min(wH*0.9, BASE_HEIGHT*2.5); dW = dH*ratio; }
+            else { dW = Math.min(wW*0.95, BASE_WIDTH*2.5); dH = dW/ratio; }
+            canvas.style.width = dW+'px'; canvas.style.height = dH+'px';
+            canvas.width = dW*dpr; canvas.height = dH*dpr;
+            scale = (dW/BASE_WIDTH)*dpr;
+            ctx.setTransform(scale,0,0,scale,0,0);
+        }
+
+        // 게임 변수
+        let score = 0, bestScore = localStorage.getItem('dinoBest') || 0;
+        let frameCount = 0;
+        let gameSpeed = 6;
+        let groundY = BASE_HEIGHT - 30;
+
+        // 공룡
+        const dino = {
+            x: 50,
+            y: groundY,
+            w: 44,
+            h: 47,
+            vy: 0,
+            jumping: false,
+            ducking: false,
+            legFrame: 0
+        };
+
+        const GRAVITY = 0.6;
+        const JUMP_FORCE = -12;
+        const DUCK_HEIGHT = 30;
+
+        // 장애물
+        let obstacles = [];
+        let obstacleTimer = 0;
+        let minObstacleGap = 60;
+
+        // 구름
+        let clouds = [];
+        for (let i = 0; i < 3; i++) {
+            clouds.push({
+                x: Math.random() * BASE_WIDTH,
+                y: 30 + Math.random() * 40,
+                w: 40 + Math.random() * 30
+            });
+        }
+
+        // 땅 패턴
+        let groundOffset = 0;
+
+        // 낮/밤
+        let isNight = false;
+        let nightTimer = 0;
+        let nightTransition = 0;
+
+        // 색상
+        const colors = {
+            day: { bg: '#f7f7f7', ground: '#535353', dino: '#535353', obstacle: '#535353', cloud: '#c4c4c4' },
+            night: { bg: '#1a1a1a', ground: '#e0e0e0', dino: '#e0e0e0', obstacle: '#e0e0e0', cloud: '#4a4a4a' }
+        };
+
+        function getColor(key) {
+            const day = colors.day[key];
+            const night = colors.night[key];
+            if (nightTransition === 0) return day;
+            if (nightTransition === 1) return night;
+            // 중간 전환
+            return lerpColor(day, night, nightTransition);
+        }
+
+        function lerpColor(c1, c2, t) {
+            const r1 = parseInt(c1.slice(1,3), 16), g1 = parseInt(c1.slice(3,5), 16), b1 = parseInt(c1.slice(5,7), 16);
+            const r2 = parseInt(c2.slice(1,3), 16), g2 = parseInt(c2.slice(3,5), 16), b2 = parseInt(c2.slice(5,7), 16);
+            const r = Math.round(r1 + (r2-r1)*t), g = Math.round(g1 + (g2-g1)*t), b = Math.round(b1 + (b2-b1)*t);
+            return `rgb(${r},${g},${b})`;
+        }
+
+        // 공룡 그리기
+        function drawDino() {
+            const { x, y, w, h, ducking, legFrame } = dino;
+            ctx.save();
+            ctx.fillStyle = getColor('dino');
+
+            const actualH = ducking ? DUCK_HEIGHT : h;
+            const actualY = ducking ? groundY - DUCK_HEIGHT : y - h;
+
+            // 몸통
+            ctx.fillRect(x, actualY, w - 10, actualH - 10);
+            
+            // 머리
+            if (ducking) {
+                ctx.fillRect(x + w - 20, actualY, 25, 16);
+                // 눈
+                ctx.fillStyle = getColor('bg');
+                ctx.fillRect(x + w - 2, actualY + 3, 5, 5);
+            } else {
+                ctx.fillRect(x + 15, actualY - 15, 30, 20);
+                // 눈
+                ctx.fillStyle = getColor('bg');
+                ctx.fillRect(x + 35, actualY - 12, 6, 6);
+            }
+
+            ctx.fillStyle = getColor('dino');
+            
+            // 꼬리
+            if (!ducking) {
+                ctx.fillRect(x - 10, actualY + 10, 15, 8);
+                ctx.fillRect(x - 15, actualY + 5, 8, 8);
+            }
+
+            // 다리
+            const legOffset = gameRunning ? (legFrame % 2 === 0 ? 0 : 6) : 0;
+            if (!ducking) {
+                ctx.fillRect(x + 5, actualY + h - 15, 8, 15 - legOffset);
+                ctx.fillRect(x + 20, actualY + h - 15, 8, 15 - (6 - legOffset));
+            } else {
+                ctx.fillRect(x + 5, actualY + actualH - 8, 8, 8);
+                ctx.fillRect(x + 18, actualY + actualH - 8, 8, 8);
+            }
+
+            // 팔
+            if (!ducking) {
+                ctx.fillRect(x + 25, actualY + 15, 5, 12);
+            }
+
+            ctx.restore();
+        }
+
+        // 선인장 그리기
+        function drawCactus(obs) {
+            ctx.fillStyle = getColor('obstacle');
+            const { x, y, w, h, type } = obs;
+
+            if (type === 'small') {
+                // 작은 선인장
+                ctx.fillRect(x + 5, y, w - 10, h);
+                ctx.fillRect(x, y + 10, 8, 15);
+                ctx.fillRect(x + w - 8, y + 15, 8, 12);
+            } else if (type === 'large') {
+                // 큰 선인장
+                ctx.fillRect(x + 8, y, w - 16, h);
+                ctx.fillRect(x, y + 15, 12, 25);
+                ctx.fillRect(x + w - 12, y + 20, 12, 20);
+            } else if (type === 'group') {
+                // 선인장 그룹
+                ctx.fillRect(x + 2, y + 5, 10, h - 5);
+                ctx.fillRect(x + 15, y, 12, h);
+                ctx.fillRect(x + 30, y + 8, 10, h - 8);
+            }
+        }
+
+        // 익룡 그리기
+        function drawPterodactyl(obs) {
+            ctx.fillStyle = getColor('obstacle');
+            const { x, y, wingFrame } = obs;
+
+            // 몸
+            ctx.fillRect(x + 15, y + 10, 25, 12);
+            
+            // 머리
+            ctx.fillRect(x + 35, y + 8, 20, 8);
+            ctx.fillRect(x + 50, y + 10, 10, 4);
+            
+            // 날개
+            if (wingFrame < 15) {
+                ctx.fillRect(x, y - 5, 20, 8);
+                ctx.fillRect(x + 5, y + 3, 15, 8);
+            } else {
+                ctx.fillRect(x, y + 15, 20, 8);
+                ctx.fillRect(x + 5, y + 10, 15, 8);
+            }
+        }
+
+        // 구름 그리기
+        function drawClouds() {
+            ctx.fillStyle = getColor('cloud');
+            clouds.forEach(c => {
+                ctx.beginPath();
+                ctx.ellipse(c.x, c.y, c.w/2, 10, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(c.x - c.w/4, c.y + 5, c.w/4, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(c.x + c.w/4, c.y + 3, c.w/3, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        // 땅 그리기
+        function drawGround() {
+            ctx.fillStyle = getColor('ground');
+            ctx.fillRect(0, groundY, BASE_WIDTH, 2);
+
+            // 땅 패턴 (점들)
+            for (let i = 0; i < 30; i++) {
+                const px = ((i * 25 - groundOffset) % (BASE_WIDTH + 50)) - 25;
+                const py = groundY + 8 + (i % 3) * 6;
+                const size = (i % 4) + 1;
+                ctx.fillRect(px, py, size, size);
+            }
+        }
+
+        // 별 그리기 (밤)
+        function drawStars() {
+            if (nightTransition < 0.3) return;
+            ctx.fillStyle = `rgba(255, 255, 255, ${nightTransition * 0.8})`;
+            for (let i = 0; i < 20; i++) {
+                const sx = (i * 31 + frameCount * 0.05) % BASE_WIDTH;
+                const sy = 20 + (i * 17) % 60;
+                ctx.fillRect(sx, sy, 2, 2);
+            }
+            // 달
+            ctx.beginPath();
+            ctx.fillStyle = `rgba(255, 255, 200, ${nightTransition * 0.9})`;
+            ctx.arc(BASE_WIDTH - 50, 40, 15, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // UI 그리기
+        function drawUI() {
+            ctx.fillStyle = getColor('dino');
+            ctx.font = 'bold 18px "Courier New", monospace';
+            ctx.textAlign = 'right';
+            
+            // 현재 점수
+            const scoreText = String(Math.floor(score)).padStart(5, '0');
+            ctx.fillText(scoreText, BASE_WIDTH - 15, 25);
+
+            // 최고 점수
+            ctx.fillStyle = getColor('cloud');
+            const bestText = 'HI ' + String(bestScore).padStart(5, '0');
+            ctx.fillText(bestText, BASE_WIDTH - 80, 25);
+        }
+
+        // 장애물 생성
+        function spawnObstacle() {
+            const types = ['small', 'large', 'group'];
+            if (score > 300) types.push('pterodactyl');
+
+            const type = types[Math.floor(Math.random() * types.length)];
+            let obs;
+
+            if (type === 'pterodactyl') {
+                const heights = [groundY - 70, groundY - 45, groundY - 90];
+                obs = {
+                    type: 'pterodactyl',
+                    x: BASE_WIDTH + 20,
+                    y: heights[Math.floor(Math.random() * heights.length)],
+                    w: 60,
+                    h: 30,
+                    wingFrame: 0
+                };
+            } else {
+                const configs = {
+                    small: { w: 20, h: 35 },
+                    large: { w: 30, h: 50 },
+                    group: { w: 45, h: 35 }
+                };
+                const c = configs[type];
+                obs = {
+                    type,
+                    x: BASE_WIDTH + 20,
+                    y: groundY - c.h,
+                    w: c.w,
+                    h: c.h
+                };
+            }
+
+            obstacles.push(obs);
+        }
+
+        // 충돌 검사
+        function checkCollision() {
+            const dinoBox = {
+                x: dino.x + 5,
+                y: dino.ducking ? groundY - DUCK_HEIGHT : dino.y - dino.h + 5,
+                w: dino.w - 15,
+                h: (dino.ducking ? DUCK_HEIGHT : dino.h) - 10
+            };
+
+            for (const obs of obstacles) {
+                let obsBox;
+                if (obs.type === 'pterodactyl') {
+                    obsBox = { x: obs.x + 10, y: obs.y + 5, w: obs.w - 20, h: obs.h - 10 };
+                } else {
+                    obsBox = { x: obs.x + 3, y: obs.y + 3, w: obs.w - 6, h: obs.h - 3 };
+                }
+
+                if (dinoBox.x < obsBox.x + obsBox.w &&
+                    dinoBox.x + dinoBox.w > obsBox.x &&
+                    dinoBox.y < obsBox.y + obsBox.h &&
+                    dinoBox.y + dinoBox.h > obsBox.y) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // 업데이트
+        function update() {
+            frameCount++;
+
+            if (!gameRunning) return;
+
+            // 점수
+            score += 0.15;
+            if (Math.floor(score) % 100 === 0 && Math.floor(score) !== Math.floor(score - 0.15)) {
+                // 100점마다 속도 증가
+                gameSpeed = Math.min(15, 6 + Math.floor(score / 100) * 0.5);
+            }
+
+            // 낮/밤 전환
+            nightTimer++;
+            if (nightTimer > 700) {
+                nightTimer = 0;
+                isNight = !isNight;
+            }
+            const targetNight = isNight ? 1 : 0;
+            nightTransition += (targetNight - nightTransition) * 0.02;
+
+            // 공룡 물리
+            if (dino.jumping) {
+                dino.vy += GRAVITY;
+                dino.y += dino.vy;
+
+                if (dino.y >= groundY) {
+                    dino.y = groundY;
+                    dino.vy = 0;
+                    dino.jumping = false;
+                }
+            }
+
+            // 다리 애니메이션
+            if (frameCount % 6 === 0) {
+                dino.legFrame++;
+            }
+
+            // 장애물 생성
+            obstacleTimer++;
+            const gap = Math.max(35, minObstacleGap - gameSpeed * 2);
+            if (obstacleTimer > gap + Math.random() * 30) {
+                spawnObstacle();
+                obstacleTimer = 0;
+            }
+
+            // 장애물 이동
+            obstacles.forEach(obs => {
+                obs.x -= gameSpeed;
+                if (obs.type === 'pterodactyl') {
+                    obs.wingFrame = (obs.wingFrame + 1) % 30;
+                }
+            });
+            obstacles = obstacles.filter(obs => obs.x + obs.w > -20);
+
+            // 구름 이동
+            clouds.forEach(c => {
+                c.x -= gameSpeed * 0.2;
+                if (c.x + c.w < 0) {
+                    c.x = BASE_WIDTH + 50;
+                    c.y = 30 + Math.random() * 40;
+                }
+            });
+
+            // 땅 스크롤
+            groundOffset = (groundOffset + gameSpeed) % 25;
+
+            // 충돌 검사
+            if (checkCollision()) {
+                endGame();
+            }
+        }
+
+        // 렌더
+        function render() {
+            ctx.setTransform(scale, 0, 0, scale, 0, 0);
+
+            // 배경
+            ctx.fillStyle = getColor('bg');
+            ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+
+            drawStars();
+            drawClouds();
+            drawGround();
+
+            // 장애물
+            obstacles.forEach(obs => {
+                if (obs.type === 'pterodactyl') {
+                    drawPterodactyl(obs);
+                } else {
+                    drawCactus(obs);
+                }
+            });
+
+            // 공룡
+            drawDino();
+
+            // UI
+            drawUI();
+        }
+
+        function gameLoop() {
+            update();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 점프
+        function jump() {
+            if (!gameRunning) return;
+            if (!dino.jumping && !dino.ducking) {
+                dino.jumping = true;
+                dino.vy = JUMP_FORCE;
+            }
+        }
+
+        // 숙이기
+        function duck(active) {
+            if (!gameRunning) return;
+            if (active && !dino.jumping) {
+                dino.ducking = true;
+            } else {
+                dino.ducking = false;
+            }
+            // 점프 중 아래키 = 빠른 하강
+            if (active && dino.jumping) {
+                dino.vy = Math.abs(dino.vy) * 1.5;
+            }
+        }
+
+        // 키보드 이벤트
+        document.addEventListener('keydown', e => {
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                e.preventDefault();
+                jump();
+            }
+            if (e.code === 'ArrowDown') {
+                e.preventDefault();
+                duck(true);
+            }
+        });
+
+        document.addEventListener('keyup', e => {
+            if (e.code === 'ArrowDown') {
+                duck(false);
+            }
+        });
+
+        // 터치 이벤트
+        let touchY = null;
+        canvas.addEventListener('touchstart', e => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            touchY = touch.clientY;
+            
+            // 화면 아래쪽 터치 = 숙이기, 위쪽 = 점프
+            const y = (touch.clientY - rect.top) / rect.height;
+            if (y > 0.7) {
+                duck(true);
+            } else {
+                jump();
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', e => {
+            e.preventDefault();
+            duck(false);
+        }, { passive: false });
+
+        // 마우스 클릭 = 점프
+        canvas.addEventListener('click', () => {
+            jump();
+        });
+
+        function endGame() {
+            gameRunning = false;
+            if (Math.floor(score) > bestScore) {
+                bestScore = Math.floor(score);
+                localStorage.setItem('dinoBest', bestScore);
+            }
+            window.gameOver(Math.floor(score));
+        }
+
+        function initGame() {
+            dino.y = groundY;
+            dino.vy = 0;
+            dino.jumping = false;
+            dino.ducking = false;
+            dino.legFrame = 0;
+            obstacles = [];
+            score = 0;
+            gameSpeed = 6;
+            obstacleTimer = 0;
+            frameCount = 0;
+            isNight = false;
+            nightTimer = 0;
+            nightTransition = 0;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        resizeCanvas();
+        window.GAME = {
+            name: 'Dino Run',
+            emoji: '🦖',
+            image: '../assets/character-dino.svg',
+            start: () => { gameRunning = true; },
+            reset: () => { initGame(); render(); },
+            stop: () => { gameRunning = false; }
+        };
+        initGame();
+        gameLoop();
+    </script>
+</body>
+</html>

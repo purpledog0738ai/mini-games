@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="dinoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4ade80"/>
+      <stop offset="100%" style="stop-color:#22c55e"/>
+    </linearGradient>
+    <linearGradient id="groundGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#d4a574"/>
+      <stop offset="100%" style="stop-color:#c4956a"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- 배경 하늘 -->
+  <rect width="100" height="100" fill="#87ceeb"/>
+  
+  <!-- 태양 -->
+  <circle cx="80" cy="18" r="10" fill="#fbbf24"/>
+  
+  <!-- 구름 -->
+  <ellipse cx="25" cy="15" rx="12" ry="5" fill="white" opacity="0.9"/>
+  <ellipse cx="20" cy="18" rx="8" ry="4" fill="white" opacity="0.9"/>
+  <ellipse cx="30" cy="17" rx="9" ry="4" fill="white" opacity="0.9"/>
+  
+  <!-- 땅 -->
+  <rect x="0" y="75" width="100" height="25" fill="url(#groundGrad)"/>
+  <rect x="0" y="75" width="100" height="2" fill="#a37c4f"/>
+  
+  <!-- 선인장 (뒤쪽) -->
+  <rect x="75" y="55" width="6" height="22" rx="2" fill="#22c55e"/>
+  <rect x="70" y="60" width="5" height="10" rx="2" fill="#22c55e"/>
+  <rect x="81" y="62" width="4" height="8" rx="2" fill="#22c55e"/>
+  
+  <!-- 공룡 몸통 -->
+  <ellipse cx="40" cy="55" rx="18" ry="15" fill="url(#dinoGrad)"/>
+  
+  <!-- 공룡 머리 -->
+  <ellipse cx="55" cy="42" rx="12" ry="10" fill="url(#dinoGrad)"/>
+  
+  <!-- 공룡 눈 -->
+  <circle cx="60" cy="40" r="4" fill="white"/>
+  <circle cx="61" cy="40" r="2.5" fill="#1a1a1a"/>
+  <circle cx="62" cy="39" r="1" fill="white"/>
+  
+  <!-- 공룡 입 -->
+  <path d="M63 46 Q67 48 63 50" stroke="#166534" stroke-width="1.5" fill="none"/>
+  
+  <!-- 공룡 뿔/돌기 -->
+  <circle cx="50" cy="34" r="3" fill="#4ade80"/>
+  <circle cx="45" cy="36" r="2.5" fill="#4ade80"/>
+  <circle cx="40" cy="38" r="2" fill="#4ade80"/>
+  
+  <!-- 공룡 꼬리 -->
+  <path d="M22 55 Q10 50 8 60 Q12 58 22 58" fill="url(#dinoGrad)"/>
+  
+  <!-- 공룡 다리 (뒤) -->
+  <ellipse cx="32" cy="72" rx="5" ry="8" fill="#22a357"/>
+  <ellipse cx="48" cy="72" rx="5" ry="8" fill="#22a357"/>
+  
+  <!-- 공룡 다리 (앞) -->
+  <ellipse cx="35" cy="73" rx="5" ry="9" fill="url(#dinoGrad)"/>
+  <ellipse cx="45" cy="73" rx="5" ry="9" fill="url(#dinoGrad)"/>
+  
+  <!-- 공룡 팔 -->
+  <ellipse cx="52" cy="52" rx="3" ry="5" fill="url(#dinoGrad)"/>
+  
+  <!-- 공룡 배 패턴 -->
+  <ellipse cx="42" cy="58" rx="10" ry="8" fill="#86efac" opacity="0.6"/>
+  
+  <!-- 먼지 파티클 -->
+  <circle cx="20" cy="78" r="2" fill="#d4a574" opacity="0.6"/>
+  <circle cx="15" cy="76" r="1.5" fill="#d4a574" opacity="0.4"/>
+  <circle cx="25" cy="77" r="1" fill="#d4a574" opacity="0.5"/>
+</svg>
