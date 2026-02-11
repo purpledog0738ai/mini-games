@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f0f1a"/>
+      <stop offset="100%" style="stop-color:#1a1a2e"/>
+    </linearGradient>
+    <linearGradient id="whiteKey" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff"/>
+      <stop offset="100%" style="stop-color:#e0e0e0"/>
+    </linearGradient>
+    <linearGradient id="blackKey" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#2c3e50"/>
+      <stop offset="100%" style="stop-color:#1a252f"/>
+    </linearGradient>
+    <linearGradient id="greenKey" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#27ae60"/>
+      <stop offset="100%" style="stop-color:#1e8449"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  
+  <!-- 배경 원 -->
+  <circle cx="50" cy="50" r="48" fill="url(#bgGrad)" stroke="#2c3e50" stroke-width="2"/>
+  
+  <!-- 피아노 건반 영역 -->
+  <g filter="url(#shadow)">
+    <!-- 흰 건반들 -->
+    <rect x="15" y="30" width="14" height="45" rx="2" fill="url(#whiteKey)"/>
+    <rect x="31" y="30" width="14" height="45" rx="2" fill="url(#whiteKey)"/>
+    <rect x="47" y="30" width="14" height="45" rx="2" fill="url(#whiteKey)"/>
+    <rect x="63" y="30" width="14" height="45" rx="2" fill="url(#whiteKey)"/>
+    
+    <!-- 검은 건반들 (눌린 상태 = 초록) -->
+    <rect x="24" y="30" width="10" height="28" rx="1" fill="url(#blackKey)" filter="url(#glow)"/>
+    <rect x="42" y="30" width="10" height="28" rx="1" fill="url(#greenKey)" filter="url(#glow)"/>
+    <rect x="58" y="30" width="10" height="28" rx="1" fill="url(#blackKey)" filter="url(#glow)"/>
+  </g>
+  
+  <!-- 음표들 -->
+  <g fill="#9b59b6" filter="url(#glow)">
+    <!-- 음표 1 -->
+    <ellipse cx="28" cy="22" rx="4" ry="3" transform="rotate(-15 28 22)"/>
+    <rect x="31" y="10" width="2" height="13"/>
+    <path d="M33 10 Q38 8 38 14 Q38 16 33 15" fill="#9b59b6"/>
+    
+    <!-- 음표 2 -->
+    <ellipse cx="68" cy="20" rx="4" ry="3" transform="rotate(-15 68 20)"/>
+    <rect x="71" y="8" width="2" height="13"/>
+    <path d="M73 8 Q78 6 78 12 Q78 14 73 13" fill="#9b59b6"/>
+  </g>
+  
+  <!-- 별 장식 -->
+  <g fill="#f1c40f" opacity="0.8">
+    <polygon points="20,85 21,88 24,88 22,90 23,93 20,91 17,93 18,90 16,88 19,88" transform="scale(0.7) translate(10, 5)"/>
+    <polygon points="75,82 76,85 79,85 77,87 78,90 75,88 72,90 73,87 71,85 74,85" transform="scale(0.6) translate(30, 10)"/>
+  </g>
+  
+  <!-- 하단 텍스트 -->
+  <text x="50" y="88" text-anchor="middle" fill="rgba(255,255,255,0.6)" font-size="8" font-family="sans-serif">TAP!</text>
+</svg>

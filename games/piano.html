@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Piano Tiles - Mini Games</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        body {
+            background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            overflow: hidden;
+        }
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 15px;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+        }
+        .header h1 {
+            color: white;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .stats {
+            display: flex;
+            gap: 15px;
+        }
+        .stat {
+            color: white;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(255,255,255,0.1);
+            padding: 5px 12px;
+            border-radius: 15px;
+        }
+        .stat.score {
+            background: rgba(255, 215, 0, 0.2);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 400px;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .game-board {
+            position: absolute;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+        }
+
+        .lane {
+            flex: 1;
+            position: relative;
+            border-left: 1px solid rgba(255,255,255,0.1);
+        }
+        .lane:first-child {
+            border-left: none;
+        }
+
+        .tile {
+            position: absolute;
+            left: 2px;
+            right: 2px;
+            height: 120px;
+            border-radius: 8px;
+            transition: opacity 0.1s;
+            cursor: pointer;
+        }
+        .tile.black {
+            background: linear-gradient(145deg, #2c3e50, #1a252f);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        .tile.black:hover {
+            background: linear-gradient(145deg, #34495e, #2c3e50);
+        }
+        .tile.tapped {
+            background: linear-gradient(145deg, #27ae60, #1e8449) !important;
+            transform: scale(0.95);
+        }
+        .tile.missed {
+            background: linear-gradient(145deg, #e74c3c, #c0392b) !important;
+        }
+
+        /* 하단 히트라인 */
+        .hit-line {
+            position: absolute;
+            bottom: 80px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, rgba(255,215,0,0.8), transparent);
+            z-index: 50;
+        }
+
+        /* 시작 화면 */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+        }
+        .overlay.hidden {
+            display: none;
+        }
+        .modal {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            border: 2px solid rgba(255,255,255,0.1);
+            max-width: 320px;
+        }
+        .modal h2 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        .modal p {
+            font-size: 1rem;
+            margin-bottom: 20px;
+            color: rgba(255,255,255,0.7);
+        }
+        .modal .final-score {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #f1c40f;
+            margin: 20px 0;
+            text-shadow: 0 0 30px rgba(241, 196, 15, 0.5);
+        }
+        .btn {
+            background: linear-gradient(145deg, #9b59b6, #8e44ad);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(155, 89, 182, 0.4);
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .mode-select {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .mode-btn {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 2px solid rgba(255,255,255,0.2);
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .mode-btn.selected {
+            background: rgba(155, 89, 182, 0.3);
+            border-color: #9b59b6;
+        }
+
+        .tip {
+            color: rgba(255,255,255,0.5);
+            font-size: 0.85rem;
+            margin-top: 15px;
+        }
+
+        /* 콤보 표시 */
+        .combo {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3rem;
+            font-weight: bold;
+            color: #f1c40f;
+            text-shadow: 0 0 30px rgba(241, 196, 15, 0.8);
+            pointer-events: none;
+            opacity: 0;
+            z-index: 150;
+            transition: all 0.3s;
+        }
+        .combo.show {
+            opacity: 1;
+            animation: comboPop 0.5s ease-out;
+        }
+        @keyframes comboPop {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+        }
+
+        /* 퍼펙트 표시 */
+        .perfect {
+            position: fixed;
+            bottom: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2ecc71;
+            text-shadow: 0 0 20px rgba(46, 204, 113, 0.8);
+            pointer-events: none;
+            opacity: 0;
+            z-index: 150;
+        }
+        .perfect.show {
+            animation: perfectPop 0.4s ease-out;
+        }
+        @keyframes perfectPop {
+            0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            50% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎹 Piano Tiles</h1>
+        <div class="stats">
+            <div class="stat score">🏆 <span id="score">0</span></div>
+            <div class="stat">⚡ <span id="combo">0</span>x</div>
+        </div>
+    </div>
+
+    <div class="game-container">
+        <div class="game-board" id="gameBoard">
+            <div class="lane" data-lane="0"></div>
+            <div class="lane" data-lane="1"></div>
+            <div class="lane" data-lane="2"></div>
+            <div class="lane" data-lane="3"></div>
+        </div>
+        <div class="hit-line"></div>
+    </div>
+
+    <div class="combo" id="comboText">10x COMBO!</div>
+    <div class="perfect" id="perfectText">PERFECT!</div>
+
+    <!-- 시작 화면 -->
+    <div class="overlay" id="startOverlay">
+        <div class="modal">
+            <h2>🎹 Piano Tiles</h2>
+            <p>검은 타일을 터치하세요!<br>빠르게, 정확하게!</p>
+            <div class="mode-select">
+                <button class="mode-btn selected" data-mode="classic">🎵 클래식</button>
+                <button class="mode-btn" data-mode="arcade">🚀 아케이드</button>
+                <button class="mode-btn" data-mode="zen">🧘 젠</button>
+            </div>
+            <button class="btn" id="startBtn">게임 시작</button>
+            <p class="tip">흰 타일을 누르면 게임 오버!</p>
+        </div>
+    </div>
+
+    <!-- 게임오버 화면 -->
+    <div class="overlay hidden" id="gameOverOverlay">
+        <div class="modal">
+            <h2 id="resultTitle">😢 게임 오버</h2>
+            <p id="resultText">흰 타일을 눌렀어요!</p>
+            <div class="final-score" id="finalScore">0</div>
+            <p>최고 기록: <span id="highscoreText">0</span></p>
+            <button class="btn" id="restartBtn">다시하기</button>
+        </div>
+    </div>
+
+    <!-- Web Audio for Piano -->
+    <script>
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        // 피아노 음계 (C4 ~ B4)
+        const NOTES = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
+        let noteIndex = 0;
+
+        function playNote() {
+            if (!audioCtx) audioCtx = new AudioContext();
+            
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.value = NOTES[noteIndex % NOTES.length];
+            noteIndex++;
+            
+            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+            
+            oscillator.start(audioCtx.currentTime);
+            oscillator.stop(audioCtx.currentTime + 0.3);
+        }
+
+        function playErrorSound() {
+            if (!audioCtx) audioCtx = new AudioContext();
+            
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.type = 'sawtooth';
+            oscillator.frequency.value = 100;
+            
+            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+            
+            oscillator.start(audioCtx.currentTime);
+            oscillator.stop(audioCtx.currentTime + 0.5);
+        }
+    </script>
+
+    <script>
+        const gameBoard = document.getElementById('gameBoard');
+        const lanes = document.querySelectorAll('.lane');
+        const scoreEl = document.getElementById('score');
+        const comboEl = document.getElementById('combo');
+        const comboText = document.getElementById('comboText');
+        const perfectText = document.getElementById('perfectText');
+        const startOverlay = document.getElementById('startOverlay');
+        const gameOverOverlay = document.getElementById('gameOverOverlay');
+        const startBtn = document.getElementById('startBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const modeBtns = document.querySelectorAll('.mode-btn');
+
+        let tiles = [];
+        let score = 0;
+        let combo = 0;
+        let highscore = parseInt(localStorage.getItem('pianoHighscore')) || 0;
+        let isPlaying = false;
+        let gameMode = 'classic';
+        let speed = 3; // 초당 이동 픽셀
+        let spawnInterval = null;
+        let animationId = null;
+        let lastSpawn = 0;
+        let lastLane = -1;
+
+        // 모드별 설정
+        const MODES = {
+            classic: { speed: 4, spawnDelay: 600, accelerate: true },
+            arcade: { speed: 6, spawnDelay: 400, accelerate: true },
+            zen: { speed: 2.5, spawnDelay: 800, accelerate: false }
+        };
+
+        // 모드 선택
+        modeBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                modeBtns.forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                gameMode = btn.dataset.mode;
+            });
+        });
+
+        // 시작 버튼
+        startBtn.addEventListener('click', startGame);
+        restartBtn.addEventListener('click', () => {
+            gameOverOverlay.classList.add('hidden');
+            startGame();
+        });
+
+        function startGame() {
+            startOverlay.classList.add('hidden');
+            gameOverOverlay.classList.add('hidden');
+            
+            // 초기화
+            tiles.forEach(t => t.element && t.element.remove());
+            tiles = [];
+            score = 0;
+            combo = 0;
+            noteIndex = 0;
+            scoreEl.textContent = '0';
+            comboEl.textContent = '0';
+            
+            const modeConfig = MODES[gameMode];
+            speed = modeConfig.speed;
+            
+            isPlaying = true;
+            lastSpawn = Date.now();
+            
+            // 타일 생성 시작
+            spawnTile();
+            gameLoop();
+        }
+
+        function spawnTile() {
+            if (!isPlaying) return;
+            
+            // 랜덤 레인 (이전과 다르게)
+            let laneIndex;
+            do {
+                laneIndex = Math.floor(Math.random() * 4);
+            } while (laneIndex === lastLane);
+            lastLane = laneIndex;
+
+            const tile = document.createElement('div');
+            tile.className = 'tile black';
+            tile.style.top = '-120px';
+            
+            const lane = lanes[laneIndex];
+            lane.appendChild(tile);
+
+            const tileData = {
+                element: tile,
+                lane: laneIndex,
+                y: -120,
+                tapped: false,
+                missed: false
+            };
+            tiles.push(tileData);
+
+            // 타일 클릭/터치 이벤트
+            tile.addEventListener('click', () => handleTileTap(tileData));
+            tile.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                handleTileTap(tileData);
+            }, { passive: false });
+        }
+
+        function handleTileTap(tileData) {
+            if (!isPlaying || tileData.tapped || tileData.missed) return;
+
+            tileData.tapped = true;
+            tileData.element.classList.add('tapped');
+            
+            playNote();
+            
+            score++;
+            combo++;
+            scoreEl.textContent = score;
+            comboEl.textContent = combo;
+
+            // 퍼펙트 표시
+            showPerfect();
+
+            // 콤보 표시
+            if (combo > 0 && combo % 10 === 0) {
+                showCombo(combo);
+            }
+
+            // 속도 증가 (classic, arcade)
+            if (MODES[gameMode].accelerate && score % 10 === 0) {
+                speed += 0.2;
+            }
+        }
+
+        function handleLaneTap(laneIndex) {
+            if (!isPlaying) return;
+
+            // 해당 레인에서 탭 가능한 타일 찾기 (가장 아래쪽)
+            const laneTiles = tiles.filter(t => 
+                t.lane === laneIndex && !t.tapped && !t.missed
+            ).sort((a, b) => b.y - a.y);
+
+            if (laneTiles.length > 0) {
+                handleTileTap(laneTiles[0]);
+            } else {
+                // 빈 레인 터치 = 게임오버
+                gameOver('흰 타일을 눌렀어요!');
+            }
+        }
+
+        // 레인 터치 이벤트
+        lanes.forEach((lane, index) => {
+            lane.addEventListener('click', (e) => {
+                if (e.target.classList.contains('tile')) return;
+                handleLaneTap(index);
+            });
+            lane.addEventListener('touchstart', (e) => {
+                if (e.target.classList.contains('tile')) return;
+                e.preventDefault();
+                handleLaneTap(index);
+            }, { passive: false });
+        });
+
+        function gameLoop() {
+            if (!isPlaying) return;
+
+            const now = Date.now();
+            const modeConfig = MODES[gameMode];
+            const boardHeight = gameBoard.offsetHeight;
+
+            // 타일 스폰
+            if (now - lastSpawn > modeConfig.spawnDelay) {
+                spawnTile();
+                lastSpawn = now;
+            }
+
+            // 타일 이동
+            tiles.forEach(tile => {
+                if (tile.tapped) return;
+                
+                tile.y += speed;
+                tile.element.style.top = tile.y + 'px';
+
+                // 화면 밖으로 나감 (미스)
+                if (tile.y > boardHeight - 60 && !tile.missed) {
+                    tile.missed = true;
+                    tile.element.classList.add('missed');
+                    gameOver('타일을 놓쳤어요!');
+                }
+            });
+
+            // 완료된 타일 정리
+            tiles = tiles.filter(tile => {
+                if (tile.tapped && tile.y > boardHeight) {
+                    tile.element.remove();
+                    return false;
+                }
+                return true;
+            });
+
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function showCombo(num) {
+            comboText.textContent = `${num}x COMBO!`;
+            comboText.classList.add('show');
+            setTimeout(() => comboText.classList.remove('show'), 500);
+        }
+
+        function showPerfect() {
+            perfectText.classList.remove('show');
+            void perfectText.offsetWidth; // reflow
+            perfectText.classList.add('show');
+        }
+
+        function gameOver(reason) {
+            isPlaying = false;
+            cancelAnimationFrame(animationId);
+            
+            playErrorSound();
+
+            // 최고 기록 갱신
+            if (score > highscore) {
+                highscore = score;
+                localStorage.setItem('pianoHighscore', highscore);
+            }
+
+            document.getElementById('resultText').textContent = reason;
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('highscoreText').textContent = highscore;
+            
+            if (score > 50) {
+                document.getElementById('resultTitle').textContent = '🎉 대단해요!';
+            } else {
+                document.getElementById('resultTitle').textContent = '😢 게임 오버';
+            }
+
+            setTimeout(() => {
+                gameOverOverlay.classList.remove('hidden');
+            }, 500);
+        }
+
+        // 키보드 지원 (1-4)
+        document.addEventListener('keydown', (e) => {
+            if (!isPlaying) return;
+            
+            const keyMap = { '1': 0, '2': 1, '3': 2, '4': 3 };
+            if (keyMap[e.key] !== undefined) {
+                handleLaneTap(keyMap[e.key]);
+            }
+        });
+
+        // 스페이스바로 시작
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                if (!startOverlay.classList.contains('hidden')) {
+                    startGame();
+                } else if (!gameOverOverlay.classList.contains('hidden')) {
+                    gameOverOverlay.classList.add('hidden');
+                    startGame();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
