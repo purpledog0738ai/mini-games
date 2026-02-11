@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Aim Trainer - Mini Games</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+        }
+
+        /* 메뉴 화면 */
+        .menu-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+            padding: 20px;
+        }
+        .menu-screen h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 0 30px rgba(255, 100, 100, 0.5);
+        }
+        .menu-screen .icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        .menu-screen .desc {
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+
+        /* 모드 선택 */
+        .mode-select {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 30px;
+            width: 100%;
+            max-width: 280px;
+        }
+        .mode-btn {
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 15px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+        .mode-btn:hover, .mode-btn.selected {
+            background: rgba(255,100,100,0.3);
+            border-color: #ff6b6b;
+        }
+        .mode-btn .mode-name {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        .mode-btn .mode-desc {
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.6);
+            margin-top: 3px;
+        }
+
+        /* 통계 */
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .stat-item {
+            background: rgba(255,255,255,0.1);
+            padding: 15px 25px;
+            border-radius: 15px;
+            text-align: center;
+            backdrop-filter: blur(5px);
+        }
+        .stat-item .label {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 5px;
+        }
+        .stat-item .value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #ff6b6b;
+        }
+
+        /* 버튼 */
+        .btn {
+            background: linear-gradient(145deg, #ff6b6b, #ee5a5a);
+            color: white;
+            border: none;
+            padding: 18px 50px;
+            border-radius: 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 10px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 107, 107, 0.4);
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        /* 게임 영역 */
+        .game-area {
+            display: none;
+            width: 100%;
+            height: 100vh;
+            position: relative;
+            background: linear-gradient(135deg, #0f0f1a, #1a1a2e);
+            cursor: crosshair;
+        }
+
+        /* HUD */
+        .hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
+            z-index: 100;
+        }
+        .hud-item {
+            color: white;
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+        .hud-item span {
+            color: #ff6b6b;
+        }
+
+        /* 타겟 */
+        .target {
+            position: absolute;
+            border-radius: 50%;
+            cursor: crosshair;
+            transform: translate(-50%, -50%) scale(0);
+            animation: targetAppear 0.15s ease-out forwards;
+            pointer-events: auto;
+        }
+        @keyframes targetAppear {
+            to { transform: translate(-50%, -50%) scale(1); }
+        }
+        .target-outer {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: radial-gradient(circle, #ff6b6b 0%, #ff6b6b 25%, white 25%, white 35%, #ff6b6b 35%, #ff6b6b 50%, white 50%, white 60%, #ff6b6b 60%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .target-center {
+            width: 20%;
+            height: 20%;
+            background: #ff6b6b;
+            border-radius: 50%;
+        }
+
+        /* 히트 이펙트 */
+        .hit-effect {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 200, 100, 0.8) 0%, transparent 70%);
+            transform: translate(-50%, -50%) scale(0);
+            animation: hitPop 0.3s ease-out forwards;
+            pointer-events: none;
+            z-index: 50;
+        }
+        @keyframes hitPop {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+        }
+
+        /* 점수 팝업 */
+        .score-popup {
+            position: absolute;
+            color: #ffd700;
+            font-size: 1.2rem;
+            font-weight: bold;
+            transform: translate(-50%, -50%);
+            animation: scoreFloat 0.8s ease-out forwards;
+            pointer-events: none;
+            z-index: 60;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+        @keyframes scoreFloat {
+            0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -100%) scale(1.2); }
+        }
+
+        /* 미스 이펙트 */
+        .miss-effect {
+            position: absolute;
+            color: #888;
+            font-size: 1rem;
+            font-weight: bold;
+            transform: translate(-50%, -50%);
+            animation: missFloat 0.5s ease-out forwards;
+            pointer-events: none;
+            z-index: 60;
+        }
+        @keyframes missFloat {
+            0% { opacity: 1; }
+            100% { opacity: 0; transform: translate(-50%, -80%); }
+        }
+
+        /* 결과 화면 */
+        .result-screen {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            z-index: 200;
+            padding: 20px;
+        }
+        .result-screen h2 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            color: #ff6b6b;
+        }
+        .result-score {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #ffd700;
+            margin: 20px 0;
+        }
+        .result-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
+            width: 100%;
+            max-width: 300px;
+        }
+        .result-stat {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .result-stat .label {
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.6);
+        }
+        .result-stat .value {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #ff6b6b;
+            margin-top: 5px;
+        }
+        .result-grade {
+            font-size: 1.5rem;
+            padding: 10px 30px;
+            border-radius: 25px;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+        .result-grade.ss { background: linear-gradient(135deg, #ffd700, #ffaa00); color: #000; }
+        .result-grade.s { background: linear-gradient(135deg, #ff6b6b, #ee5a5a); color: #fff; }
+        .result-grade.a { background: linear-gradient(135deg, #4ecdc4, #44a08d); color: #fff; }
+        .result-grade.b { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
+        .result-grade.c { background: linear-gradient(135deg, #888, #666); color: #fff; }
+
+        /* 카운트다운 */
+        .countdown {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 300;
+        }
+        .countdown-number {
+            font-size: 8rem;
+            font-weight: bold;
+            color: #ff6b6b;
+            animation: countPop 1s ease-out;
+        }
+        @keyframes countPop {
+            0% { transform: scale(2); opacity: 0; }
+            50% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(0.8); opacity: 0; }
+        }
+
+        /* 반응형 */
+        @media (max-width: 400px) {
+            .menu-screen h1 { font-size: 2rem; }
+            .stats { flex-direction: column; gap: 10px; }
+            .hud-item { font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 메뉴 화면 -->
+    <div class="menu-screen" id="menuScreen">
+        <div class="icon">🎯</div>
+        <h1>Aim Trainer</h1>
+        <p class="desc">타겟을 빠르고 정확하게 맞춰라!</p>
+
+        <div class="mode-select">
+            <button class="mode-btn selected" data-mode="classic">
+                <div class="mode-name">🎯 클래식</div>
+                <div class="mode-desc">30개 타겟을 최대한 빠르게</div>
+            </button>
+            <button class="mode-btn" data-mode="time">
+                <div class="mode-name">⏱️ 타임어택</div>
+                <div class="mode-desc">30초 동안 최대한 많이</div>
+            </button>
+            <button class="mode-btn" data-mode="precision">
+                <div class="mode-name">🎪 정밀 모드</div>
+                <div class="mode-desc">작은 타겟 20개 (미스 없이!)</div>
+            </button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-item">
+                <div class="label">최고 점수</div>
+                <div class="value" id="bestScore">-</div>
+            </div>
+            <div class="stat-item">
+                <div class="label">평균 반응</div>
+                <div class="value" id="avgReaction">-</div>
+            </div>
+        </div>
+
+        <button class="btn" id="startBtn">🎮 시작하기</button>
+    </div>
+
+    <!-- 게임 영역 -->
+    <div class="game-area" id="gameArea">
+        <div class="hud">
+            <div class="hud-item" id="hudLeft">타겟: <span>0/30</span></div>
+            <div class="hud-item" id="hudCenter">점수: <span>0</span></div>
+            <div class="hud-item" id="hudRight">정확도: <span>100%</span></div>
+        </div>
+    </div>
+
+    <!-- 카운트다운 -->
+    <div class="countdown" id="countdown">
+        <div class="countdown-number" id="countdownNumber">3</div>
+    </div>
+
+    <!-- 결과 화면 -->
+    <div class="result-screen" id="resultScreen">
+        <h2>게임 종료!</h2>
+        <div class="result-grade" id="resultGrade">S</div>
+        <div class="result-score" id="resultScore">0</div>
+        <div class="result-stats">
+            <div class="result-stat">
+                <div class="label">명중</div>
+                <div class="value" id="resultHits">0</div>
+            </div>
+            <div class="result-stat">
+                <div class="label">미스</div>
+                <div class="value" id="resultMisses">0</div>
+            </div>
+            <div class="result-stat">
+                <div class="label">정확도</div>
+                <div class="value" id="resultAccuracy">0%</div>
+            </div>
+            <div class="result-stat">
+                <div class="label">평균 반응</div>
+                <div class="value" id="resultAvgTime">0ms</div>
+            </div>
+        </div>
+        <button class="btn" id="retryBtn">🔄 다시하기</button>
+        <button class="btn" style="background: linear-gradient(145deg, #667eea, #764ba2); margin-top: 10px;" id="menuBtn">🏠 메뉴로</button>
+    </div>
+
+    <!-- 사운드 -->
+    <script>
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function playSound(freq = 800, duration = 80, type = 'sine') {
+            if (!audioCtx) audioCtx = new AudioContext();
+            
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.type = type;
+            oscillator.frequency.value = freq;
+            
+            gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
+            
+            oscillator.start(audioCtx.currentTime);
+            oscillator.stop(audioCtx.currentTime + duration / 1000);
+        }
+
+        function playHit() {
+            playSound(1200, 60);
+            setTimeout(() => playSound(1500, 40), 30);
+        }
+
+        function playMiss() {
+            playSound(200, 150, 'sawtooth');
+        }
+
+        function playCountdown() {
+            playSound(600, 100);
+        }
+
+        function playStart() {
+            playSound(800, 100);
+            setTimeout(() => playSound(1000, 100), 100);
+            setTimeout(() => playSound(1200, 150), 200);
+        }
+    </script>
+
+    <script>
+        // DOM 요소
+        const menuScreen = document.getElementById('menuScreen');
+        const gameArea = document.getElementById('gameArea');
+        const countdown = document.getElementById('countdown');
+        const countdownNumber = document.getElementById('countdownNumber');
+        const resultScreen = document.getElementById('resultScreen');
+        const startBtn = document.getElementById('startBtn');
+        const retryBtn = document.getElementById('retryBtn');
+        const menuBtn = document.getElementById('menuBtn');
+        const bestScoreEl = document.getElementById('bestScore');
+        const avgReactionEl = document.getElementById('avgReaction');
+
+        // 게임 상태
+        let gameMode = 'classic';
+        let score = 0;
+        let hits = 0;
+        let misses = 0;
+        let totalClicks = 0;
+        let targetCount = 0;
+        let maxTargets = 30;
+        let timeLimit = 0;
+        let startTime = 0;
+        let targetSpawnTime = 0;
+        let reactionTimes = [];
+        let currentTarget = null;
+        let gameTimer = null;
+        let isPlaying = false;
+
+        // 모드별 설정
+        const modes = {
+            classic: { targets: 30, time: 0, size: 70 },
+            time: { targets: Infinity, time: 30, size: 70 },
+            precision: { targets: 20, time: 0, size: 40 }
+        };
+
+        // 초기화
+        loadStats();
+
+        // 모드 선택
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                gameMode = btn.dataset.mode;
+                loadStats();
+            });
+        });
+
+        // 시작 버튼
+        startBtn.addEventListener('click', startCountdown);
+        retryBtn.addEventListener('click', startCountdown);
+        menuBtn.addEventListener('click', showMenu);
+
+        function startCountdown() {
+            menuScreen.style.display = 'none';
+            resultScreen.style.display = 'none';
+            gameArea.style.display = 'block';
+            countdown.style.display = 'flex';
+
+            let count = 3;
+            countdownNumber.textContent = count;
+            playCountdown();
+
+            const countInterval = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    countdownNumber.textContent = count;
+                    countdownNumber.style.animation = 'none';
+                    void countdownNumber.offsetWidth;
+                    countdownNumber.style.animation = 'countPop 1s ease-out';
+                    playCountdown();
+                } else {
+                    clearInterval(countInterval);
+                    countdown.style.display = 'none';
+                    playStart();
+                    startGame();
+                }
+            }, 1000);
+        }
+
+        function startGame() {
+            const config = modes[gameMode];
+            
+            score = 0;
+            hits = 0;
+            misses = 0;
+            totalClicks = 0;
+            targetCount = 0;
+            maxTargets = config.targets;
+            timeLimit = config.time;
+            reactionTimes = [];
+            isPlaying = true;
+            startTime = Date.now();
+
+            updateHUD();
+            spawnTarget();
+
+            if (timeLimit > 0) {
+                gameTimer = setInterval(() => {
+                    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                    const remaining = timeLimit - elapsed;
+                    document.getElementById('hudLeft').innerHTML = `남은 시간: <span>${remaining}초</span>`;
+                    
+                    if (remaining <= 0) {
+                        endGame();
+                    }
+                }, 100);
+            }
+        }
+
+        function spawnTarget() {
+            if (!isPlaying) return;
+
+            // 기존 타겟 제거
+            if (currentTarget) {
+                currentTarget.remove();
+            }
+
+            const config = modes[gameMode];
+            const size = config.size + Math.random() * 20 - 10;
+            const padding = 80;
+            
+            const x = padding + Math.random() * (gameArea.clientWidth - padding * 2);
+            const y = padding + Math.random() * (gameArea.clientHeight - padding * 2);
+
+            const target = document.createElement('div');
+            target.className = 'target';
+            target.style.cssText = `
+                left: ${x}px;
+                top: ${y}px;
+                width: ${size}px;
+                height: ${size}px;
+            `;
+            target.innerHTML = `
+                <div class="target-outer">
+                    <div class="target-center"></div>
+                </div>
+            `;
+
+            target.addEventListener('click', (e) => {
+                e.stopPropagation();
+                handleHit(x, y, size);
+            });
+
+            gameArea.appendChild(target);
+            currentTarget = target;
+            targetSpawnTime = performance.now();
+        }
+
+        function handleHit(x, y, size) {
+            if (!isPlaying) return;
+
+            const reactionTime = Math.round(performance.now() - targetSpawnTime);
+            reactionTimes.push(reactionTime);
+
+            hits++;
+            totalClicks++;
+            targetCount++;
+
+            // 점수 계산 (빠를수록 높은 점수)
+            let points = Math.max(10, Math.round(1000 / (reactionTime / 100)));
+            if (gameMode === 'precision') points = Math.round(points * 1.5);
+            score += points;
+
+            // 이펙트
+            showHitEffect(x, y);
+            showScorePopup(x, y, points, reactionTime);
+            playHit();
+
+            if (currentTarget) {
+                currentTarget.remove();
+                currentTarget = null;
+            }
+
+            updateHUD();
+
+            // 게임 종료 체크
+            if (targetCount >= maxTargets) {
+                endGame();
+            } else {
+                setTimeout(spawnTarget, 100);
+            }
+        }
+
+        function handleMiss(e) {
+            if (!isPlaying) return;
+            
+            misses++;
+            totalClicks++;
+
+            const x = e.clientX || e.touches?.[0]?.clientX;
+            const y = e.clientY || e.touches?.[0]?.clientY;
+
+            showMissEffect(x, y);
+            playMiss();
+
+            // 정밀 모드에서는 미스 시 페널티
+            if (gameMode === 'precision') {
+                score = Math.max(0, score - 50);
+            }
+
+            updateHUD();
+        }
+
+        gameArea.addEventListener('click', handleMiss);
+
+        function showHitEffect(x, y) {
+            const effect = document.createElement('div');
+            effect.className = 'hit-effect';
+            effect.style.left = x + 'px';
+            effect.style.top = y + 'px';
+            gameArea.appendChild(effect);
+            setTimeout(() => effect.remove(), 300);
+        }
+
+        function showScorePopup(x, y, points, time) {
+            const popup = document.createElement('div');
+            popup.className = 'score-popup';
+            popup.style.left = x + 'px';
+            popup.style.top = (y - 30) + 'px';
+            popup.textContent = `+${points} (${time}ms)`;
+            gameArea.appendChild(popup);
+            setTimeout(() => popup.remove(), 800);
+        }
+
+        function showMissEffect(x, y) {
+            const effect = document.createElement('div');
+            effect.className = 'miss-effect';
+            effect.style.left = x + 'px';
+            effect.style.top = y + 'px';
+            effect.textContent = 'MISS';
+            gameArea.appendChild(effect);
+            setTimeout(() => effect.remove(), 500);
+        }
+
+        function updateHUD() {
+            const accuracy = totalClicks > 0 ? Math.round((hits / totalClicks) * 100) : 100;
+            
+            if (gameMode === 'time') {
+                // 타임어택 모드
+            } else {
+                document.getElementById('hudLeft').innerHTML = `타겟: <span>${targetCount}/${maxTargets}</span>`;
+            }
+            
+            document.getElementById('hudCenter').innerHTML = `점수: <span>${score}</span>`;
+            document.getElementById('hudRight').innerHTML = `정확도: <span>${accuracy}%</span>`;
+        }
+
+        function endGame() {
+            isPlaying = false;
+            clearInterval(gameTimer);
+
+            if (currentTarget) {
+                currentTarget.remove();
+                currentTarget = null;
+            }
+
+            const accuracy = totalClicks > 0 ? Math.round((hits / totalClicks) * 100) : 0;
+            const avgReaction = reactionTimes.length > 0 
+                ? Math.round(reactionTimes.reduce((a, b) => a + b, 0) / reactionTimes.length)
+                : 0;
+
+            // 등급 계산
+            const grade = getGrade(score, accuracy);
+
+            // 결과 표시
+            document.getElementById('resultScore').textContent = score;
+            document.getElementById('resultHits').textContent = hits;
+            document.getElementById('resultMisses').textContent = misses;
+            document.getElementById('resultAccuracy').textContent = accuracy + '%';
+            document.getElementById('resultAvgTime').textContent = avgReaction + 'ms';
+            document.getElementById('resultGrade').textContent = grade.label;
+            document.getElementById('resultGrade').className = 'result-grade ' + grade.class;
+
+            gameArea.style.display = 'none';
+            resultScreen.style.display = 'flex';
+
+            // 저장
+            saveStats(score, avgReaction);
+        }
+
+        function getGrade(score, accuracy) {
+            if (score >= 3000 && accuracy >= 95) return { label: 'SS', class: 'ss' };
+            if (score >= 2000 && accuracy >= 85) return { label: 'S', class: 's' };
+            if (score >= 1500 && accuracy >= 75) return { label: 'A', class: 'a' };
+            if (score >= 1000 && accuracy >= 60) return { label: 'B', class: 'b' };
+            return { label: 'C', class: 'c' };
+        }
+
+        function showMenu() {
+            resultScreen.style.display = 'none';
+            gameArea.style.display = 'none';
+            menuScreen.style.display = 'flex';
+            loadStats();
+        }
+
+        function loadStats() {
+            const key = `aim_${gameMode}`;
+            const best = localStorage.getItem(`${key}_best`) || 0;
+            const avgData = JSON.parse(localStorage.getItem(`${key}_reactions`) || '[]');
+            const avg = avgData.length > 0 
+                ? Math.round(avgData.reduce((a, b) => a + b, 0) / avgData.length)
+                : 0;
+
+            bestScoreEl.textContent = best > 0 ? best : '-';
+            avgReactionEl.textContent = avg > 0 ? avg + 'ms' : '-';
+        }
+
+        function saveStats(score, avgReaction) {
+            const key = `aim_${gameMode}`;
+            const best = parseInt(localStorage.getItem(`${key}_best`) || '0');
+            
+            if (score > best) {
+                localStorage.setItem(`${key}_best`, score);
+            }
+
+            if (avgReaction > 0) {
+                const reactions = JSON.parse(localStorage.getItem(`${key}_reactions`) || '[]');
+                reactions.push(avgReaction);
+                const trimmed = reactions.slice(-20);
+                localStorage.setItem(`${key}_reactions`, JSON.stringify(trimmed));
+            }
+        }
+
+        // 키보드 지원
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Escape') {
+                if (isPlaying) {
+                    endGame();
+                } else if (resultScreen.style.display === 'flex') {
+                    showMenu();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
