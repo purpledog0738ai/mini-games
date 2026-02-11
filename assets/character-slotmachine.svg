@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- 배경 -->
+  <circle cx="50" cy="50" r="45" fill="#2d1b4e"/>
+  
+  <!-- 슬롯머신 본체 -->
+  <rect x="20" y="25" width="60" height="55" rx="8" fill="#3a2a5a"/>
+  <rect x="20" y="25" width="60" height="55" rx="8" fill="url(#goldGrad)" opacity="0.3"/>
+  
+  <!-- 골드 테두리 -->
+  <rect x="20" y="25" width="60" height="55" rx="8" fill="none" stroke="#ffd700" stroke-width="3"/>
+  
+  <!-- 릴 배경 -->
+  <rect x="26" y="32" width="48" height="30" rx="4" fill="#1a0a2e"/>
+  
+  <!-- 릴 구분선 -->
+  <line x1="42" y1="32" x2="42" y2="62" stroke="#2d1b4e" stroke-width="2"/>
+  <line x1="58" y1="32" x2="58" y2="62" stroke="#2d1b4e" stroke-width="2"/>
+  
+  <!-- 심볼들 -->
+  <text x="34" y="52" font-size="16" text-anchor="middle">🍒</text>
+  <text x="50" y="52" font-size="16" text-anchor="middle">7️⃣</text>
+  <text x="66" y="52" font-size="16" text-anchor="middle">💎</text>
+  
+  <!-- 당첨 라인 -->
+  <rect x="24" y="40" width="52" height="18" rx="3" fill="none" stroke="#ffd700" stroke-width="2" opacity="0.8"/>
+  
+  <!-- 레버 -->
+  <rect x="82" y="35" width="6" height="25" rx="3" fill="#4a3a6a"/>
+  <circle cx="85" cy="32" r="6" fill="#e74c3c"/>
+  <circle cx="85" cy="32" r="4" fill="#ff6b6b"/>
+  
+  <!-- 스핀 버튼 -->
+  <rect x="35" y="67" width="30" height="10" rx="5" fill="url(#goldGrad)"/>
+  <text x="50" y="75" font-size="6" text-anchor="middle" fill="#1a0a2e" font-weight="bold">SPIN</text>
+  
+  <!-- 코인 슬롯 -->
+  <rect x="15" y="55" width="4" height="12" rx="2" fill="#ffd700"/>
+  
+  <!-- 반짝이 효과 -->
+  <circle cx="28" cy="28" r="2" fill="#ffd700" opacity="0.8"/>
+  <circle cx="72" cy="28" r="1.5" fill="#ffd700" opacity="0.6"/>
+  <circle cx="75" cy="70" r="1" fill="#ffd700" opacity="0.5"/>
+  
+  <!-- 그라데이션 정의 -->
+  <defs>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffd700"/>
+      <stop offset="50%" style="stop-color:#ff8c00"/>
+      <stop offset="100%" style="stop-color:#ffd700"/>
+    </linearGradient>
+  </defs>
+</svg>

@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Slot Machine - Mini Games</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        body {
+            background: linear-gradient(135deg, #1a0a2e 0%, #2d1b4e 50%, #1a0a2e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            padding: 15px;
+            overflow: hidden;
+        }
+
+        .header {
+            color: white;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 5px;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+            background: linear-gradient(180deg, #ffd700, #ff8c00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .info-bar {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            color: white;
+            font-size: 0.95rem;
+            flex-wrap: wrap;
+        }
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(255,215,0,0.1);
+            padding: 8px 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,215,0,0.2);
+        }
+        .info-item.coins {
+            background: linear-gradient(145deg, rgba(255,215,0,0.2), rgba(255,140,0,0.2));
+            border-color: rgba(255,215,0,0.4);
+        }
+
+        /* 슬롯머신 프레임 */
+        .slot-machine {
+            background: linear-gradient(145deg, #3a2a5a, #2a1a4a);
+            border-radius: 25px;
+            padding: 25px 20px;
+            box-shadow: 
+                0 20px 60px rgba(0,0,0,0.5),
+                inset 0 2px 0 rgba(255,255,255,0.1),
+                inset 0 -2px 0 rgba(0,0,0,0.3);
+            border: 3px solid #ffd700;
+            position: relative;
+        }
+
+        /* 빛나는 테두리 효과 */
+        .slot-machine::before {
+            content: '';
+            position: absolute;
+            inset: -5px;
+            border-radius: 30px;
+            background: linear-gradient(45deg, #ffd700, #ff8c00, #ffd700, #ff8c00);
+            z-index: -1;
+            animation: borderGlow 3s linear infinite;
+            opacity: 0.5;
+        }
+        @keyframes borderGlow {
+            0%, 100% { filter: blur(8px); }
+            50% { filter: blur(12px); }
+        }
+
+        /* 릴 컨테이너 */
+        .reels-container {
+            display: flex;
+            gap: 8px;
+            background: #1a0a2e;
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: inset 0 5px 20px rgba(0,0,0,0.5);
+        }
+
+        /* 개별 릴 */
+        .reel {
+            width: 80px;
+            height: 200px;
+            background: linear-gradient(180deg, #0a0015 0%, #1a0a2e 50%, #0a0015 100%);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+        }
+
+        /* 릴 스트립 */
+        .reel-strip {
+            position: absolute;
+            width: 100%;
+            transition: transform 0.1s ease-out;
+        }
+
+        /* 심볼 */
+        .symbol {
+            width: 80px;
+            height: 66.67px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.8rem;
+        }
+
+        /* 중앙 라인 표시 */
+        .payline {
+            position: absolute;
+            left: -5px;
+            right: -5px;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 70px;
+            border: 3px solid #ffd700;
+            border-radius: 8px;
+            pointer-events: none;
+            box-shadow: 0 0 15px rgba(255,215,0,0.5);
+            z-index: 10;
+        }
+
+        /* 배팅 섹션 */
+        .bet-section {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+            color: white;
+        }
+        .bet-btn {
+            width: 44px;
+            height: 44px;
+            border: none;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #4a3a6a, #3a2a5a);
+            color: #ffd700;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: transform 0.15s;
+        }
+        .bet-btn:active {
+            transform: scale(0.95);
+        }
+        .bet-display {
+            font-size: 1.3rem;
+            min-width: 80px;
+            text-align: center;
+        }
+        .bet-display span {
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        /* 스핀 버튼 */
+        .spin-btn {
+            width: 100%;
+            max-width: 260px;
+            height: 65px;
+            border: none;
+            border-radius: 35px;
+            background: linear-gradient(145deg, #ffd700, #ff8c00);
+            color: #1a0a2e;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+            box-shadow: 
+                0 8px 25px rgba(255,215,0,0.4),
+                inset 0 2px 0 rgba(255,255,255,0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-shadow: 0 1px 0 rgba(255,255,255,0.3);
+        }
+        .spin-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 35px rgba(255,215,0,0.5);
+        }
+        .spin-btn:active {
+            transform: translateY(0);
+        }
+        .spin-btn:disabled {
+            background: linear-gradient(145deg, #666, #444);
+            color: #999;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* 당첨 메시지 */
+        .win-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            font-size: 3rem;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 
+                0 0 20px rgba(255,215,0,0.8),
+                0 0 40px rgba(255,215,0,0.6);
+            z-index: 100;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        .win-message.show {
+            animation: winPop 1.5s ease-out forwards;
+        }
+        @keyframes winPop {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+            30% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            60% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+        }
+
+        /* 페이테이블 */
+        .paytable {
+            margin-top: 20px;
+            background: rgba(255,255,255,0.05);
+            padding: 12px;
+            border-radius: 12px;
+            color: rgba(255,255,255,0.7);
+            font-size: 0.8rem;
+            max-width: 280px;
+        }
+        .paytable-title {
+            color: #ffd700;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .paytable-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .paytable-row:last-child {
+            border-bottom: none;
+        }
+        .paytable-symbols {
+            font-size: 1.1rem;
+        }
+        .paytable-payout {
+            color: #ffd700;
+        }
+
+        /* 오버레이 */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+        }
+        .overlay.show {
+            display: flex;
+        }
+        .modal {
+            background: linear-gradient(135deg, #2a1a4a, #1a0a2e);
+            padding: 40px;
+            border-radius: 25px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            border: 2px solid #ffd700;
+            max-width: 90%;
+        }
+        .modal h2 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            color: #ffd700;
+        }
+        .modal p {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            color: rgba(255,255,255,0.7);
+        }
+        .modal .final-coins {
+            font-size: 3.5rem;
+            font-weight: bold;
+            color: #ffd700;
+            margin: 20px 0;
+            text-shadow: 0 0 30px rgba(255,215,0,0.5);
+        }
+        .modal .btn {
+            background: linear-gradient(145deg, #ffd700, #ff8c00);
+            color: #1a0a2e;
+            border: none;
+            padding: 14px 30px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .tip {
+            color: rgba(255,255,255,0.4);
+            font-size: 0.8rem;
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        /* 코인 파티클 */
+        .coin-particle {
+            position: fixed;
+            font-size: 2rem;
+            pointer-events: none;
+            z-index: 150;
+            animation: coinFall 1.5s ease-out forwards;
+        }
+        @keyframes coinFall {
+            0% { opacity: 1; transform: translateY(0) rotate(0deg); }
+            100% { opacity: 0; transform: translateY(200px) rotate(720deg); }
+        }
+
+        @media (max-width: 350px) {
+            .reel {
+                width: 65px;
+                height: 170px;
+            }
+            .symbol {
+                width: 65px;
+                height: 56.67px;
+                font-size: 2.2rem;
+            }
+            .payline {
+                height: 60px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎰 Slot Machine</h1>
+    </div>
+
+    <div class="info-bar">
+        <div class="info-item coins">💰 <span id="coins">100</span></div>
+        <div class="info-item">🏆 최고: <span id="maxCoins">100</span></div>
+        <div class="info-item">🎲 스핀: <span id="spins">0</span></div>
+    </div>
+
+    <div class="slot-machine">
+        <div class="reels-container">
+            <div class="reel" id="reel1">
+                <div class="reel-strip" id="strip1"></div>
+            </div>
+            <div class="reel" id="reel2">
+                <div class="reel-strip" id="strip2"></div>
+            </div>
+            <div class="reel" id="reel3">
+                <div class="reel-strip" id="strip3"></div>
+            </div>
+            <div class="payline"></div>
+        </div>
+
+        <div class="bet-section">
+            <button class="bet-btn" onclick="changeBet(-5)">−</button>
+            <div class="bet-display">베팅: <span id="betAmount">10</span></div>
+            <button class="bet-btn" onclick="changeBet(5)">+</button>
+        </div>
+
+        <button class="spin-btn" id="spinBtn" onclick="spin()">🎰 SPIN!</button>
+    </div>
+
+    <div class="paytable">
+        <div class="paytable-title">💎 배당표</div>
+        <div class="paytable-row">
+            <span class="paytable-symbols">💎💎💎</span>
+            <span class="paytable-payout">x50</span>
+        </div>
+        <div class="paytable-row">
+            <span class="paytable-symbols">7️⃣7️⃣7️⃣</span>
+            <span class="paytable-payout">x30</span>
+        </div>
+        <div class="paytable-row">
+            <span class="paytable-symbols">⭐⭐⭐</span>
+            <span class="paytable-payout">x20</span>
+        </div>
+        <div class="paytable-row">
+            <span class="paytable-symbols">🍒🍒🍒</span>
+            <span class="paytable-payout">x10</span>
+        </div>
+        <div class="paytable-row">
+            <span class="paytable-symbols">🍋🍋🍋</span>
+            <span class="paytable-payout">x5</span>
+        </div>
+        <div class="paytable-row">
+            <span class="paytable-symbols">🍇🍇🍇</span>
+            <span class="paytable-payout">x3</span>
+        </div>
+        <div class="paytable-row">
+            <span class="paytable-symbols">2개 일치</span>
+            <span class="paytable-payout">x1</span>
+        </div>
+    </div>
+
+    <p class="tip">스페이스/Enter로 스핀 | ↑↓로 베팅 조절</p>
+
+    <div class="win-message" id="winMessage">🎉 WIN!</div>
+
+    <div class="overlay" id="overlay">
+        <div class="modal">
+            <h2 id="resultTitle">💸 파산!</h2>
+            <p id="resultText">코인이 모두 소진되었어요</p>
+            <div class="final-coins" id="finalCoins">0</div>
+            <p>총 <span id="totalSpins">0</span>번 스핀했어요!</p>
+            <button class="btn" onclick="resetGame()">다시 시작</button>
+        </div>
+    </div>
+
+    <!-- 사운드 -->
+    <script>
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function playSound(type) {
+            if (!audioCtx) audioCtx = new AudioContext();
+            
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            if (type === 'spin') {
+                oscillator.type = 'square';
+                oscillator.frequency.setValueAtTime(200, audioCtx.currentTime);
+                oscillator.frequency.linearRampToValueAtTime(400, audioCtx.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+                oscillator.start(audioCtx.currentTime);
+                oscillator.stop(audioCtx.currentTime + 0.2);
+            } else if (type === 'stop') {
+                oscillator.type = 'sine';
+                oscillator.frequency.value = 600;
+                gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+                oscillator.start(audioCtx.currentTime);
+                oscillator.stop(audioCtx.currentTime + 0.1);
+            } else if (type === 'win') {
+                const freqs = [523, 659, 784, 1047];
+                freqs.forEach((f, i) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.type = 'sine';
+                    osc.frequency.value = f;
+                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime + i * 0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + i * 0.1 + 0.3);
+                    osc.start(audioCtx.currentTime + i * 0.1);
+                    osc.stop(audioCtx.currentTime + i * 0.1 + 0.3);
+                });
+            } else if (type === 'jackpot') {
+                for (let i = 0; i < 8; i++) {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.type = 'sine';
+                    osc.frequency.value = 400 + i * 100;
+                    gain.gain.setValueAtTime(0.12, audioCtx.currentTime + i * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + i * 0.08 + 0.2);
+                    osc.start(audioCtx.currentTime + i * 0.08);
+                    osc.stop(audioCtx.currentTime + i * 0.08 + 0.2);
+                }
+            } else if (type === 'bet') {
+                oscillator.type = 'sine';
+                oscillator.frequency.value = 440;
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+                oscillator.start(audioCtx.currentTime);
+                oscillator.stop(audioCtx.currentTime + 0.05);
+            }
+        }
+    </script>
+
+    <script>
+        // 심볼 정의 (가중치 포함)
+        const SYMBOLS = [
+            { emoji: '🍇', weight: 30 },
+            { emoji: '🍋', weight: 25 },
+            { emoji: '🍒', weight: 20 },
+            { emoji: '⭐', weight: 12 },
+            { emoji: '7️⃣', weight: 8 },
+            { emoji: '💎', weight: 5 }
+        ];
+
+        // 배당률
+        const PAYOUTS = {
+            '💎💎💎': 50,
+            '7️⃣7️⃣7️⃣': 30,
+            '⭐⭐⭐': 20,
+            '🍒🍒🍒': 10,
+            '🍋🍋🍋': 5,
+            '🍇🍇🍇': 3
+        };
+
+        // 게임 상태
+        let coins = parseInt(localStorage.getItem('slotCoins')) || 100;
+        let maxCoins = parseInt(localStorage.getItem('slotMaxCoins')) || 100;
+        let betAmount = 10;
+        let spins = 0;
+        let isSpinning = false;
+
+        // DOM
+        const coinsEl = document.getElementById('coins');
+        const maxCoinsEl = document.getElementById('maxCoins');
+        const spinsEl = document.getElementById('spins');
+        const betEl = document.getElementById('betAmount');
+        const spinBtn = document.getElementById('spinBtn');
+        const winMessage = document.getElementById('winMessage');
+
+        // 초기화
+        coinsEl.textContent = coins;
+        maxCoinsEl.textContent = maxCoins;
+
+        // 릴 스트립 생성
+        function createReelStrips() {
+            for (let i = 1; i <= 3; i++) {
+                const strip = document.getElementById(`strip${i}`);
+                strip.innerHTML = '';
+                
+                // 충분한 심볼 생성 (스크롤용)
+                for (let j = 0; j < 50; j++) {
+                    const symbol = getRandomSymbol();
+                    const div = document.createElement('div');
+                    div.className = 'symbol';
+                    div.textContent = symbol;
+                    strip.appendChild(div);
+                }
+                
+                // 초기 위치 설정
+                strip.style.transform = 'translateY(-66.67px)';
+            }
+        }
+
+        // 가중치 기반 랜덤 심볼
+        function getRandomSymbol() {
+            const totalWeight = SYMBOLS.reduce((sum, s) => sum + s.weight, 0);
+            let random = Math.random() * totalWeight;
+            
+            for (const symbol of SYMBOLS) {
+                random -= symbol.weight;
+                if (random <= 0) return symbol.emoji;
+            }
+            return SYMBOLS[0].emoji;
+        }
+
+        // 베팅 변경
+        function changeBet(delta) {
+            if (isSpinning) return;
+            
+            betAmount = Math.max(5, Math.min(coins, betAmount + delta));
+            betEl.textContent = betAmount;
+            playSound('bet');
+        }
+
+        // 스핀!
+        function spin() {
+            if (isSpinning || coins < betAmount) return;
+
+            isSpinning = true;
+            spinBtn.disabled = true;
+            
+            // 베팅 차감
+            coins -= betAmount;
+            coinsEl.textContent = coins;
+            spins++;
+            spinsEl.textContent = spins;
+
+            playSound('spin');
+
+            // 결과 결정
+            const results = [getRandomSymbol(), getRandomSymbol(), getRandomSymbol()];
+
+            // 각 릴 애니메이션
+            const delays = [1500, 2000, 2500];
+            
+            for (let i = 0; i < 3; i++) {
+                animateReel(i + 1, results[i], delays[i]);
+            }
+
+            // 결과 확인
+            setTimeout(() => {
+                checkWin(results);
+            }, delays[2] + 200);
+        }
+
+        // 릴 애니메이션
+        function animateReel(reelNum, finalSymbol, duration) {
+            const strip = document.getElementById(`strip${reelNum}`);
+            
+            // 새 심볼들로 채우기
+            strip.innerHTML = '';
+            const symbolCount = 30;
+            
+            for (let i = 0; i < symbolCount; i++) {
+                const div = document.createElement('div');
+                div.className = 'symbol';
+                // 마지막 심볼만 결과로 설정
+                div.textContent = (i === symbolCount - 2) ? finalSymbol : getRandomSymbol();
+                strip.appendChild(div);
+            }
+
+            // 애니메이션 시작
+            strip.style.transition = 'none';
+            strip.style.transform = 'translateY(0)';
+            
+            setTimeout(() => {
+                strip.style.transition = `transform ${duration}ms cubic-bezier(0.2, 0.8, 0.3, 1)`;
+                strip.style.transform = `translateY(-${(symbolCount - 3) * 66.67}px)`;
+            }, 50);
+
+            // 정지 사운드
+            setTimeout(() => playSound('stop'), duration);
+        }
+
+        // 당첨 확인
+        function checkWin(results) {
+            const key = results.join('');
+            let multiplier = 0;
+            let winText = '';
+
+            // 3개 일치 확인
+            if (PAYOUTS[key]) {
+                multiplier = PAYOUTS[key];
+                winText = `🎉 ${results[0]}x3 - ${multiplier}배!`;
+            }
+            // 2개 일치 확인
+            else if (results[0] === results[1] || results[1] === results[2] || results[0] === results[2]) {
+                multiplier = 1;
+                winText = '✨ 2개 일치!';
+            }
+
+            if (multiplier > 0) {
+                const winAmount = betAmount * multiplier;
+                coins += winAmount;
+                coinsEl.textContent = coins;
+
+                // 최고 기록 갱신
+                if (coins > maxCoins) {
+                    maxCoins = coins;
+                    maxCoinsEl.textContent = maxCoins;
+                    localStorage.setItem('slotMaxCoins', maxCoins);
+                }
+
+                // 당첨 메시지
+                winMessage.textContent = `+${winAmount} 💰`;
+                winMessage.className = 'win-message show';
+                setTimeout(() => winMessage.className = 'win-message', 1500);
+
+                // 사운드 & 파티클
+                if (multiplier >= 20) {
+                    playSound('jackpot');
+                    createCoinParticles(20);
+                } else {
+                    playSound('win');
+                    createCoinParticles(multiplier);
+                }
+            }
+
+            // 저장
+            localStorage.setItem('slotCoins', coins);
+
+            // 파산 체크
+            if (coins < 5) {
+                setTimeout(() => showGameOver(), 500);
+            }
+
+            isSpinning = false;
+            spinBtn.disabled = false;
+            
+            // 베팅 금액 조정
+            if (betAmount > coins) {
+                betAmount = Math.max(5, coins);
+                betEl.textContent = betAmount;
+            }
+        }
+
+        // 코인 파티클
+        function createCoinParticles(count) {
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    const particle = document.createElement('div');
+                    particle.className = 'coin-particle';
+                    particle.textContent = '🪙';
+                    particle.style.left = `${30 + Math.random() * 40}%`;
+                    particle.style.top = `${20 + Math.random() * 20}%`;
+                    document.body.appendChild(particle);
+                    
+                    setTimeout(() => particle.remove(), 1500);
+                }, i * 50);
+            }
+        }
+
+        // 게임 오버
+        function showGameOver() {
+            document.getElementById('finalCoins').textContent = maxCoins;
+            document.getElementById('totalSpins').textContent = spins;
+            document.getElementById('overlay').classList.add('show');
+        }
+
+        // 리셋
+        function resetGame() {
+            coins = 100;
+            betAmount = 10;
+            spins = 0;
+            
+            coinsEl.textContent = coins;
+            betEl.textContent = betAmount;
+            spinsEl.textContent = spins;
+            
+            localStorage.setItem('slotCoins', coins);
+            document.getElementById('overlay').classList.remove('show');
+            createReelStrips();
+        }
+
+        // 키보드
+        document.addEventListener('keydown', (e) => {
+            if (e.key === ' ' || e.key === 'Enter') {
+                e.preventDefault();
+                spin();
+            } else if (e.key === 'ArrowUp') {
+                changeBet(5);
+            } else if (e.key === 'ArrowDown') {
+                changeBet(-5);
+            }
+        });
+
+        // 터치 지원
+        spinBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            spin();
+        }, { passive: false });
+
+        // 시작
+        createReelStrips();
+    </script>
+</body>
+</html>
