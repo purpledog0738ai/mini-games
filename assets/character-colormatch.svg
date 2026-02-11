@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- 배경 원 -->
+  <circle cx="50" cy="50" r="45" fill="#1a1a2e"/>
+  
+  <!-- 색상 팔레트 배경 -->
+  <circle cx="50" cy="50" r="38" fill="#16213e"/>
+  
+  <!-- 색상 조각들 (파이 형태) -->
+  <path d="M50 12 A38 38 0 0 1 88 50 L50 50 Z" fill="#e74c3c"/>
+  <path d="M88 50 A38 38 0 0 1 50 88 L50 50 Z" fill="#3498db"/>
+  <path d="M50 88 A38 38 0 0 1 12 50 L50 50 Z" fill="#2ecc71"/>
+  <path d="M12 50 A38 38 0 0 1 50 12 L50 50 Z" fill="#f1c40f"/>
+  
+  <!-- 중앙 원 (눈) -->
+  <circle cx="50" cy="50" r="18" fill="#1a1a2e"/>
+  <circle cx="50" cy="50" r="14" fill="#fff"/>
+  
+  <!-- 눈동자 -->
+  <circle cx="53" cy="48" r="7" fill="#1a1a2e"/>
+  <circle cx="55" cy="46" r="2.5" fill="#fff"/>
+  
+  <!-- 귀여운 표정 -->
+  <ellipse cx="36" cy="45" rx="4" ry="2" fill="rgba(255,107,157,0.5)"/>
+  <ellipse cx="64" cy="45" rx="4" ry="2" fill="rgba(255,107,157,0.5)"/>
+  
+  <!-- 작은 하이라이트들 -->
+  <circle cx="30" cy="28" r="3" fill="rgba(255,255,255,0.3)"/>
+  <circle cx="70" cy="72" r="2" fill="rgba(255,255,255,0.2)"/>
+  
+  <!-- 물음표/느낌표 심볼 -->
+  <text x="75" y="25" font-size="14" fill="#f1c40f" font-weight="bold">?</text>
+</svg>

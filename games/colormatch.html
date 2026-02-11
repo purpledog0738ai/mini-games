@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Color Match - Mini Games</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            padding: 15px;
+            overflow: hidden;
+        }
+        .header {
+            color: white;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+            text-shadow: 0 0 20px rgba(255, 100, 200, 0.5);
+        }
+        .info-bar {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            color: white;
+            font-size: 1rem;
+            flex-wrap: wrap;
+        }
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(255,255,255,0.1);
+            padding: 8px 16px;
+            border-radius: 15px;
+            backdrop-filter: blur(5px);
+        }
+        .info-item.highlight {
+            background: rgba(255, 215, 0, 0.2);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+        }
+
+        /* 색상 표시 영역 */
+        .color-display {
+            width: 280px;
+            height: 180px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.1);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            border: 3px solid rgba(255,255,255,0.2);
+        }
+        .color-text {
+            font-size: 3rem;
+            font-weight: bold;
+            text-shadow: 2px 2px 10px rgba(0,0,0,0.5);
+            transition: opacity 0.2s;
+        }
+
+        /* 질문 */
+        .question {
+            color: white;
+            font-size: 1.2rem;
+            text-align: center;
+            opacity: 0.9;
+        }
+
+        /* 타이머 바 */
+        .timer-container {
+            width: 280px;
+            height: 10px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .timer-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #e74c3c, #f39c12, #2ecc71);
+            transition: width 0.1s linear;
+            border-radius: 5px;
+        }
+
+        /* 버튼 영역 */
+        .buttons {
+            display: flex;
+            gap: 20px;
+        }
+        .answer-btn {
+            width: 120px;
+            height: 80px;
+            border: none;
+            border-radius: 20px;
+            font-size: 2.5rem;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        .answer-btn:active {
+            transform: scale(0.95);
+        }
+        .answer-btn.yes {
+            background: linear-gradient(145deg, #2ecc71, #27ae60);
+            color: white;
+        }
+        .answer-btn.yes:hover {
+            box-shadow: 0 5px 30px rgba(46, 204, 113, 0.5);
+        }
+        .answer-btn.no {
+            background: linear-gradient(145deg, #e74c3c, #c0392b);
+            color: white;
+        }
+        .answer-btn.no:hover {
+            box-shadow: 0 5px 30px rgba(231, 76, 60, 0.5);
+        }
+
+        /* 피드백 */
+        .feedback {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 5rem;
+            opacity: 0;
+            pointer-events: none;
+            text-shadow: 0 0 30px rgba(0,0,0,0.5);
+            z-index: 50;
+        }
+        .feedback.correct {
+            animation: feedbackPop 0.5s ease-out;
+        }
+        .feedback.wrong {
+            animation: feedbackShake 0.5s ease-out;
+        }
+        @keyframes feedbackPop {
+            0% { opacity: 1; transform: translate(-50%, -50%) scale(0.5); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+        }
+        @keyframes feedbackShake {
+            0% { opacity: 1; transform: translate(-50%, -50%); }
+            25% { opacity: 1; transform: translate(-40%, -50%); }
+            50% { opacity: 1; transform: translate(-60%, -50%); }
+            75% { opacity: 1; transform: translate(-45%, -50%); }
+            100% { opacity: 0; transform: translate(-50%, -50%); }
+        }
+
+        /* 콤보 표시 */
+        .combo {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            font-size: 1.5rem;
+            color: #f1c40f;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(241, 196, 15, 0.5);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .combo.show {
+            opacity: 1;
+        }
+
+        .controls {
+            margin-top: 25px;
+        }
+        .btn {
+            background: linear-gradient(145deg, #e94560, #c73e54);
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(233, 69, 96, 0.4);
+        }
+
+        .tip {
+            color: rgba(255,255,255,0.5);
+            font-size: 0.85rem;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        /* 오버레이 */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        .overlay.show {
+            display: flex;
+        }
+        .modal {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            border: 2px solid rgba(255,255,255,0.1);
+            max-width: 90%;
+        }
+        .modal h2 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        .modal p {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            color: rgba(255,255,255,0.7);
+        }
+        .modal .final-score {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #f1c40f;
+            margin: 20px 0;
+            text-shadow: 0 0 30px rgba(241, 196, 15, 0.5);
+        }
+        .stats-row {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 20px;
+            color: rgba(255,255,255,0.8);
+        }
+
+        /* 레벨 표시 */
+        .level-indicator {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.15);
+            padding: 8px 15px;
+            border-radius: 10px;
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 350px) {
+            .color-display {
+                width: 240px;
+                height: 150px;
+            }
+            .color-text {
+                font-size: 2.5rem;
+            }
+            .answer-btn {
+                width: 100px;
+                height: 70px;
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="level-indicator">레벨 <span id="level">1</span></div>
+    <div class="combo" id="combo">🔥 x5</div>
+
+    <div class="header">
+        <h1>🎨 Color Match</h1>
+    </div>
+    
+    <div class="info-bar">
+        <div class="info-item highlight">🏆 <span id="score">0</span>점</div>
+        <div class="info-item">⏱️ <span id="time">30</span>초</div>
+        <div class="info-item">🎯 <span id="highscore">0</span> 최고</div>
+    </div>
+
+    <div class="game-area">
+        <div class="timer-container">
+            <div class="timer-bar" id="timerBar" style="width: 100%"></div>
+        </div>
+
+        <div class="color-display">
+            <span class="color-text" id="colorText">준비</span>
+        </div>
+
+        <p class="question">글자의 <strong>색상</strong>이 글자 내용과 일치하나요?</p>
+
+        <div class="buttons">
+            <button class="answer-btn no" id="noBtn" onclick="answer(false)">✗</button>
+            <button class="answer-btn yes" id="yesBtn" onclick="answer(true)">✓</button>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn" id="startBtn" onclick="startGame()">🎮 시작</button>
+    </div>
+
+    <p class="tip">← / → 또는 A / D 키보드로도 플레이 가능!</p>
+
+    <div class="feedback" id="feedback">✓</div>
+
+    <div class="overlay" id="overlay">
+        <div class="modal">
+            <h2 id="resultTitle">⏰ 시간 종료!</h2>
+            <p id="resultText">잘 했어요!</p>
+            <div class="final-score" id="finalScore">0</div>
+            <div class="stats-row">
+                <span>✓ 정답: <span id="correctCount">0</span></span>
+                <span>✗ 오답: <span id="wrongCount">0</span></span>
+            </div>
+            <p>최대 콤보: <span id="maxCombo">0</span>x</p>
+            <button class="btn" onclick="hideOverlay(); startGame();">다시하기</button>
+        </div>
+    </div>
+
+    <!-- 사운드 -->
+    <script>
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function playSound(type) {
+            if (!audioCtx) audioCtx = new AudioContext();
+            
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            if (type === 'correct') {
+                oscillator.type = 'sine';
+                oscillator.frequency.value = 880;
+                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+                oscillator.start(audioCtx.currentTime);
+                oscillator.stop(audioCtx.currentTime + 0.15);
+            } else if (type === 'wrong') {
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.value = 200;
+                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+                oscillator.start(audioCtx.currentTime);
+                oscillator.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'combo') {
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(660, audioCtx.currentTime);
+                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1);
+                oscillator.frequency.setValueAtTime(1100, audioCtx.currentTime + 0.2);
+                gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+                oscillator.start(audioCtx.currentTime);
+                oscillator.stop(audioCtx.currentTime + 0.3);
+            }
+        }
+    </script>
+
+    <script>
+        // 색상 데이터
+        const COLORS = [
+            { name: '빨강', color: '#e74c3c' },
+            { name: '파랑', color: '#3498db' },
+            { name: '초록', color: '#2ecc71' },
+            { name: '노랑', color: '#f1c40f' },
+            { name: '보라', color: '#9b59b6' },
+            { name: '주황', color: '#e67e22' },
+            { name: '분홍', color: '#ff6b9d' },
+            { name: '하늘', color: '#00d4ff' }
+        ];
+
+        // 게임 상태
+        let score = 0;
+        let highscore = parseInt(localStorage.getItem('colormatchHighscore')) || 0;
+        let timeLeft = 30;
+        let isPlaying = false;
+        let currentMatch = false;
+        let combo = 0;
+        let maxCombo = 0;
+        let correctCount = 0;
+        let wrongCount = 0;
+        let level = 1;
+        let gameTimer = null;
+        let roundTimer = null;
+        let roundTimeLeft = 0;
+
+        // DOM 요소
+        const colorText = document.getElementById('colorText');
+        const scoreEl = document.getElementById('score');
+        const timeEl = document.getElementById('time');
+        const highscoreEl = document.getElementById('highscore');
+        const levelEl = document.getElementById('level');
+        const comboEl = document.getElementById('combo');
+        const timerBar = document.getElementById('timerBar');
+        const startBtn = document.getElementById('startBtn');
+        const feedback = document.getElementById('feedback');
+        const yesBtn = document.getElementById('yesBtn');
+        const noBtn = document.getElementById('noBtn');
+
+        // 초기화
+        highscoreEl.textContent = highscore;
+
+        function startGame() {
+            score = 0;
+            timeLeft = 30;
+            combo = 0;
+            maxCombo = 0;
+            correctCount = 0;
+            wrongCount = 0;
+            level = 1;
+            isPlaying = true;
+
+            scoreEl.textContent = '0';
+            timeEl.textContent = '30';
+            levelEl.textContent = '1';
+            startBtn.style.display = 'none';
+            comboEl.classList.remove('show');
+
+            // 메인 타이머
+            gameTimer = setInterval(() => {
+                timeLeft--;
+                timeEl.textContent = timeLeft;
+
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+
+            nextRound();
+        }
+
+        function nextRound() {
+            if (!isPlaying) return;
+
+            // 레벨 계산 (10점마다 레벨업)
+            level = Math.floor(score / 10) + 1;
+            levelEl.textContent = level;
+
+            // 랜덤 색상 선택
+            const textColorObj = COLORS[Math.floor(Math.random() * COLORS.length)];
+            const displayColorObj = COLORS[Math.floor(Math.random() * COLORS.length)];
+
+            // 매칭 여부 (레벨 높을수록 불일치 확률 증가)
+            const matchChance = Math.max(0.3, 0.5 - (level * 0.02));
+            currentMatch = Math.random() < matchChance ? true : (textColorObj.name === displayColorObj.name);
+
+            if (currentMatch) {
+                // 일치: 색상 이름과 표시 색상이 같음
+                colorText.textContent = textColorObj.name;
+                colorText.style.color = textColorObj.color;
+            } else {
+                // 불일치: 다른 색상으로 표시
+                colorText.textContent = textColorObj.name;
+                colorText.style.color = displayColorObj.color;
+                // 우연히 같으면 다시 선택
+                if (textColorObj.name === displayColorObj.name) {
+                    const otherColors = COLORS.filter(c => c.name !== textColorObj.name);
+                    const other = otherColors[Math.floor(Math.random() * otherColors.length)];
+                    colorText.style.color = other.color;
+                }
+            }
+
+            // 라운드 타이머 (레벨에 따라 시간 감소)
+            const roundTime = Math.max(1.5, 4 - (level * 0.2));
+            roundTimeLeft = roundTime;
+            timerBar.style.width = '100%';
+            timerBar.style.transition = 'none';
+            
+            setTimeout(() => {
+                timerBar.style.transition = `width ${roundTime}s linear`;
+                timerBar.style.width = '0%';
+            }, 50);
+
+            clearTimeout(roundTimer);
+            roundTimer = setTimeout(() => {
+                if (isPlaying) {
+                    // 시간 초과 = 오답 처리
+                    handleWrong();
+                }
+            }, roundTime * 1000);
+        }
+
+        function answer(userAnswer) {
+            if (!isPlaying) return;
+
+            clearTimeout(roundTimer);
+
+            if (userAnswer === currentMatch) {
+                handleCorrect();
+            } else {
+                handleWrong();
+            }
+        }
+
+        function handleCorrect() {
+            combo++;
+            correctCount++;
+            if (combo > maxCombo) maxCombo = combo;
+
+            // 점수 계산 (콤보 보너스)
+            const baseScore = 1;
+            const comboBonus = Math.floor(combo / 5);
+            const points = baseScore + comboBonus;
+            score += points;
+            scoreEl.textContent = score;
+
+            // 피드백
+            feedback.textContent = points > 1 ? `+${points}` : '✓';
+            feedback.className = 'feedback correct';
+            feedback.offsetWidth; // reflow
+            feedback.className = 'feedback correct';
+
+            playSound('correct');
+
+            // 콤보 표시
+            if (combo >= 5) {
+                comboEl.textContent = `🔥 x${combo}`;
+                comboEl.classList.add('show');
+                if (combo % 5 === 0) playSound('combo');
+            }
+
+            // 시간 보너스 (5콤보마다 1초)
+            if (combo % 5 === 0) {
+                timeLeft = Math.min(timeLeft + 1, 60);
+                timeEl.textContent = timeLeft;
+            }
+
+            nextRound();
+        }
+
+        function handleWrong() {
+            combo = 0;
+            wrongCount++;
+            comboEl.classList.remove('show');
+
+            // 피드백
+            feedback.textContent = '✗';
+            feedback.className = 'feedback wrong';
+            feedback.offsetWidth;
+            feedback.className = 'feedback wrong';
+
+            playSound('wrong');
+
+            // 시간 패널티
+            timeLeft = Math.max(0, timeLeft - 2);
+            timeEl.textContent = timeLeft;
+
+            if (timeLeft <= 0) {
+                endGame();
+            } else {
+                nextRound();
+            }
+        }
+
+        function endGame() {
+            isPlaying = false;
+            clearInterval(gameTimer);
+            clearTimeout(roundTimer);
+
+            // 최고 기록 갱신
+            if (score > highscore) {
+                highscore = score;
+                localStorage.setItem('colormatchHighscore', highscore);
+                highscoreEl.textContent = highscore;
+            }
+
+            // 결과 표시
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('correctCount').textContent = correctCount;
+            document.getElementById('wrongCount').textContent = wrongCount;
+            document.getElementById('maxCombo').textContent = maxCombo;
+
+            if (score >= 50) {
+                document.getElementById('resultTitle').textContent = '🏆 대단해요!';
+                document.getElementById('resultText').textContent = '색상 마스터!';
+            } else if (score >= 30) {
+                document.getElementById('resultTitle').textContent = '👏 잘했어요!';
+                document.getElementById('resultText').textContent = '눈이 빠르네요!';
+            } else {
+                document.getElementById('resultTitle').textContent = '⏰ 시간 종료!';
+                document.getElementById('resultText').textContent = '다시 도전해보세요!';
+            }
+
+            document.getElementById('overlay').classList.add('show');
+            startBtn.style.display = 'block';
+            colorText.textContent = '준비';
+            colorText.style.color = 'white';
+            timerBar.style.width = '100%';
+        }
+
+        function hideOverlay() {
+            document.getElementById('overlay').classList.remove('show');
+        }
+
+        // 키보드 지원
+        document.addEventListener('keydown', (e) => {
+            if (!isPlaying) {
+                if (e.key === ' ' || e.key === 'Enter') {
+                    e.preventDefault();
+                    startGame();
+                }
+                return;
+            }
+
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+                answer(false);
+            } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+                answer(true);
+            }
+        });
+
+        // 터치 이벤트
+        yesBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            answer(true);
+        }, { passive: false });
+
+        noBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            answer(false);
+        }, { passive: false });
+    </script>
+</body>
+</html>
