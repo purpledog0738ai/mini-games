@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Typing Game - Mini Games</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', 'Consolas', monospace;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: white;
+            overflow: hidden;
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 800px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        /* 메뉴 화면 */
+        .menu-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        .menu-screen h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 0 30px rgba(0, 212, 255, 0.5);
+        }
+        .menu-screen .desc {
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+        .icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* 난이도 선택 */
+        .difficulty-select {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .diff-btn {
+            padding: 12px 25px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 25px;
+            background: transparent;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .diff-btn:hover, .diff-btn.selected {
+            background: rgba(0, 212, 255, 0.3);
+            border-color: #00d4ff;
+        }
+        .diff-btn.selected {
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+
+        /* 통계 */
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .stat-item {
+            background: rgba(255,255,255,0.1);
+            padding: 15px 25px;
+            border-radius: 15px;
+            text-align: center;
+            backdrop-filter: blur(5px);
+        }
+        .stat-item .label {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 5px;
+        }
+        .stat-item .value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+
+        /* 버튼 */
+        .btn {
+            background: linear-gradient(145deg, #00d4ff, #00a8cc);
+            color: white;
+            border: none;
+            padding: 18px 50px;
+            border-radius: 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 20px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.4);
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        /* 게임 화면 */
+        .game-screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        /* 상단 정보 */
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 30px;
+            padding: 15px 25px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+        }
+        .game-header .info {
+            text-align: center;
+        }
+        .game-header .info .label {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.6);
+        }
+        .game-header .info .value {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #f1c40f;
+        }
+
+        /* 타이머 바 */
+        .timer-bar-container {
+            width: 100%;
+            max-width: 600px;
+            height: 8px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+        .timer-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            transition: width 0.1s linear;
+            border-radius: 4px;
+        }
+        .timer-bar.warning {
+            background: linear-gradient(90deg, #f39c12, #e74c3c);
+        }
+
+        /* 단어 표시 */
+        .word-display {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            padding: 20px 40px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            letter-spacing: 3px;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .word-display .correct {
+            color: #2ecc71;
+        }
+        .word-display .current {
+            color: #f1c40f;
+            text-decoration: underline;
+        }
+        .word-display .wrong {
+            color: #e74c3c;
+            text-decoration: line-through;
+        }
+        .word-display .remaining {
+            color: rgba(255,255,255,0.5);
+        }
+
+        /* 입력 필드 */
+        .input-container {
+            width: 100%;
+            max-width: 500px;
+            margin-bottom: 20px;
+        }
+        .typing-input {
+            width: 100%;
+            padding: 20px;
+            font-size: 1.5rem;
+            font-family: 'Consolas', monospace;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 15px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            text-align: center;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .typing-input:focus {
+            border-color: #00d4ff;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+        }
+        .typing-input.correct {
+            border-color: #2ecc71;
+        }
+        .typing-input.wrong {
+            border-color: #e74c3c;
+            animation: shake 0.3s;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        /* 다음 단어 미리보기 */
+        .next-word {
+            color: rgba(255,255,255,0.4);
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+        .next-word span {
+            color: rgba(255,255,255,0.6);
+        }
+
+        /* 콤보 표시 */
+        .combo-display {
+            font-size: 1.2rem;
+            color: #f1c40f;
+            margin-bottom: 10px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .combo-display.show {
+            opacity: 1;
+            animation: pulse 0.5s;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        /* 결과 화면 */
+        .result-screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        .result-screen h2 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        .result-emoji {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+        .result-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .result-stat {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 15px;
+        }
+        .result-stat .value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+        .result-stat .label {
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.6);
+        }
+        .result-grade {
+            font-size: 1.5rem;
+            padding: 10px 30px;
+            border-radius: 25px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .result-grade.s { background: linear-gradient(135deg, #f1c40f, #f39c12); }
+        .result-grade.a { background: linear-gradient(135deg, #2ecc71, #27ae60); }
+        .result-grade.b { background: linear-gradient(135deg, #3498db, #2980b9); }
+        .result-grade.c { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
+        .result-grade.d { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+
+        /* 모바일 키보드 힌트 */
+        .mobile-hint {
+            display: none;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+        @media (max-width: 768px) {
+            .mobile-hint { display: block; }
+            .word-display { font-size: 1.8rem; padding: 15px 20px; }
+            .typing-input { font-size: 1.2rem; padding: 15px; }
+            .game-header .info .value { font-size: 1rem; }
+        }
+
+        /* 팁 */
+        .tip {
+            position: fixed;
+            bottom: 30px;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- 메뉴 화면 -->
+        <div class="menu-screen" id="menuScreen">
+            <div class="icon">⌨️</div>
+            <h1>Typing Game</h1>
+            <p class="desc">빠르고 정확하게 단어를 입력하세요!</p>
+            
+            <div class="difficulty-select">
+                <button class="diff-btn selected" data-diff="easy">🌱 쉬움</button>
+                <button class="diff-btn" data-diff="normal">⚡ 보통</button>
+                <button class="diff-btn" data-diff="hard">🔥 어려움</button>
+            </div>
+            
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="label">최고 WPM</div>
+                    <div class="value" id="bestWpm">-</div>
+                </div>
+                <div class="stat-item">
+                    <div class="label">최고 정확도</div>
+                    <div class="value" id="bestAccuracy">-</div>
+                </div>
+            </div>
+            
+            <button class="btn" id="startBtn">🎮 시작하기</button>
+        </div>
+
+        <!-- 게임 화면 -->
+        <div class="game-screen" id="gameScreen">
+            <div class="game-header">
+                <div class="info">
+                    <div class="label">점수</div>
+                    <div class="value" id="score">0</div>
+                </div>
+                <div class="info">
+                    <div class="label">WPM</div>
+                    <div class="value" id="wpm">0</div>
+                </div>
+                <div class="info">
+                    <div class="label">정확도</div>
+                    <div class="value" id="accuracy">100%</div>
+                </div>
+                <div class="info">
+                    <div class="label">남은 시간</div>
+                    <div class="value" id="timer">60</div>
+                </div>
+            </div>
+            
+            <div class="timer-bar-container">
+                <div class="timer-bar" id="timerBar"></div>
+            </div>
+            
+            <div class="combo-display" id="comboDisplay">🔥 5 콤보!</div>
+            
+            <div class="word-display" id="wordDisplay">ready</div>
+            
+            <div class="next-word" id="nextWord">다음: <span>-</span></div>
+            
+            <div class="input-container">
+                <input type="text" class="typing-input" id="typingInput" 
+                       placeholder="여기에 입력하세요" autocomplete="off" 
+                       autocapitalize="off" autocorrect="off" spellcheck="false">
+            </div>
+            
+            <p class="mobile-hint">📱 입력창을 탭하여 키보드 열기</p>
+        </div>
+
+        <!-- 결과 화면 -->
+        <div class="result-screen" id="resultScreen">
+            <div class="result-emoji" id="resultEmoji">🏆</div>
+            <h2 id="resultTitle">대단해요!</h2>
+            
+            <div class="result-grade" id="resultGrade">S</div>
+            
+            <div class="result-stats">
+                <div class="result-stat">
+                    <div class="value" id="finalScore">0</div>
+                    <div class="label">점수</div>
+                </div>
+                <div class="result-stat">
+                    <div class="value" id="finalWpm">0</div>
+                    <div class="label">WPM</div>
+                </div>
+                <div class="result-stat">
+                    <div class="value" id="finalAccuracy">0%</div>
+                    <div class="label">정확도</div>
+                </div>
+                <div class="result-stat">
+                    <div class="value" id="finalWords">0</div>
+                    <div class="label">완료 단어</div>
+                </div>
+            </div>
+            
+            <div class="stats" style="margin-top: 10px;">
+                <div class="stat-item">
+                    <div class="label">최대 콤보</div>
+                    <div class="value" id="maxCombo">0</div>
+                </div>
+            </div>
+            
+            <button class="btn" id="retryBtn">🔄 다시 하기</button>
+            <button class="btn" style="background: rgba(255,255,255,0.2);" id="menuBtn">🏠 메뉴</button>
+        </div>
+    </div>
+    
+    <p class="tip" id="tip">난이도를 선택하고 시작하세요</p>
+
+    <!-- 사운드 -->
+    <script>
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function playBeep(freq = 800, duration = 50, type = 'sine') {
+            if (!audioCtx) audioCtx = new AudioContext();
+            
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.type = type;
+            oscillator.frequency.value = freq;
+            
+            gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
+            
+            oscillator.start(audioCtx.currentTime);
+            oscillator.stop(audioCtx.currentTime + duration / 1000);
+        }
+
+        function playCorrect() { playBeep(880, 80); }
+        function playWrong() { playBeep(200, 150, 'sawtooth'); }
+        function playCombo() { playBeep(1200, 100); setTimeout(() => playBeep(1400, 100), 80); }
+        function playComplete() { playBeep(880, 100); setTimeout(() => playBeep(1100, 150), 100); }
+    </script>
+
+    <script>
+        // 단어 목록 (난이도별)
+        const WORDS = {
+            easy: [
+                'cat', 'dog', 'sun', 'run', 'hat', 'cup', 'pen', 'box', 'red', 'big',
+                'fun', 'hot', 'car', 'map', 'bed', 'top', 'six', 'bus', 'fox', 'pig',
+                'win', 'yes', 'zoo', 'arm', 'egg', 'ice', 'oak', 'use', 'add', 'all',
+                'and', 'art', 'ask', 'bad', 'bag', 'ban', 'bar', 'bat', 'bee', 'bet',
+                'bit', 'bow', 'boy', 'bug', 'but', 'buy', 'cab', 'can', 'cap', 'cow'
+            ],
+            normal: [
+                'apple', 'beach', 'chair', 'dance', 'eagle', 'flame', 'grape', 'house',
+                'image', 'juice', 'knife', 'lemon', 'money', 'night', 'ocean', 'piano',
+                'queen', 'river', 'stone', 'tiger', 'under', 'voice', 'water', 'xenon',
+                'youth', 'zebra', 'about', 'above', 'actor', 'admit', 'adopt', 'after',
+                'again', 'agree', 'ahead', 'album', 'alien', 'allow', 'alone', 'along',
+                'alpha', 'alter', 'among', 'angel', 'anger', 'angle', 'angry', 'anime'
+            ],
+            hard: [
+                'algorithm', 'beautiful', 'challenge', 'dangerous', 'education',
+                'fantastic', 'guarantee', 'happiness', 'important', 'javascript',
+                'knowledge', 'leadership', 'management', 'necessary', 'operation',
+                'philosophy', 'quarantine', 'reasonable', 'significant', 'technology',
+                'understand', 'vocabulary', 'wednesday', 'xylophone', 'yesterday',
+                'accomplish', 'background', 'CalculaTOR', 'definition', 'enthusiasm',
+                'foundation', 'generation', 'helicopter', 'incredible', 'journalism'
+            ]
+        };
+
+        // DOM 요소
+        const menuScreen = document.getElementById('menuScreen');
+        const gameScreen = document.getElementById('gameScreen');
+        const resultScreen = document.getElementById('resultScreen');
+        const startBtn = document.getElementById('startBtn');
+        const retryBtn = document.getElementById('retryBtn');
+        const menuBtn = document.getElementById('menuBtn');
+        const typingInput = document.getElementById('typingInput');
+        const wordDisplay = document.getElementById('wordDisplay');
+        const nextWordEl = document.getElementById('nextWord');
+        const scoreEl = document.getElementById('score');
+        const wpmEl = document.getElementById('wpm');
+        const accuracyEl = document.getElementById('accuracy');
+        const timerEl = document.getElementById('timer');
+        const timerBar = document.getElementById('timerBar');
+        const comboDisplay = document.getElementById('comboDisplay');
+        const tip = document.getElementById('tip');
+        const diffBtns = document.querySelectorAll('.diff-btn');
+
+        // 게임 상태
+        let difficulty = 'easy';
+        let gameTime = 60;
+        let timeLeft = gameTime;
+        let score = 0;
+        let wordsCompleted = 0;
+        let totalChars = 0;
+        let correctChars = 0;
+        let combo = 0;
+        let maxCombo = 0;
+        let currentWord = '';
+        let nextWord = '';
+        let wordList = [];
+        let timerInterval = null;
+        let gameStartTime = 0;
+        let isPlaying = false;
+
+        // 난이도 선택
+        diffBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                diffBtns.forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                difficulty = btn.dataset.diff;
+                updateBestStats();
+            });
+        });
+
+        // 시작 버튼
+        startBtn.addEventListener('click', startGame);
+        retryBtn.addEventListener('click', startGame);
+        menuBtn.addEventListener('click', showMenu);
+
+        function startGame() {
+            // 초기화
+            wordList = shuffleArray([...WORDS[difficulty]]);
+            timeLeft = gameTime;
+            score = 0;
+            wordsCompleted = 0;
+            totalChars = 0;
+            correctChars = 0;
+            combo = 0;
+            maxCombo = 0;
+            isPlaying = true;
+            gameStartTime = Date.now();
+            
+            // 화면 전환
+            menuScreen.style.display = 'none';
+            resultScreen.style.display = 'none';
+            gameScreen.style.display = 'flex';
+            tip.textContent = '단어를 입력하고 Enter 또는 Space로 제출';
+            
+            // 첫 단어 설정
+            currentWord = getNextWord();
+            nextWord = getNextWord();
+            updateWordDisplay();
+            nextWordEl.innerHTML = `다음: <span>${nextWord}</span>`;
+            
+            // UI 초기화
+            typingInput.value = '';
+            typingInput.focus();
+            updateStats();
+            
+            // 타이머 시작
+            timerBar.style.width = '100%';
+            timerBar.classList.remove('warning');
+            timerInterval = setInterval(updateTimer, 100);
+        }
+
+        function getNextWord() {
+            if (wordList.length === 0) {
+                wordList = shuffleArray([...WORDS[difficulty]]);
+            }
+            return wordList.pop().toLowerCase();
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function updateWordDisplay() {
+            const typed = typingInput.value.toLowerCase();
+            let html = '';
+            
+            for (let i = 0; i < currentWord.length; i++) {
+                if (i < typed.length) {
+                    if (typed[i] === currentWord[i]) {
+                        html += `<span class="correct">${currentWord[i]}</span>`;
+                    } else {
+                        html += `<span class="wrong">${currentWord[i]}</span>`;
+                    }
+                } else if (i === typed.length) {
+                    html += `<span class="current">${currentWord[i]}</span>`;
+                } else {
+                    html += `<span class="remaining">${currentWord[i]}</span>`;
+                }
+            }
+            
+            wordDisplay.innerHTML = html;
+        }
+
+        function updateTimer() {
+            timeLeft -= 0.1;
+            const percentage = (timeLeft / gameTime) * 100;
+            timerBar.style.width = percentage + '%';
+            timerEl.textContent = Math.ceil(timeLeft);
+            
+            if (percentage < 30) {
+                timerBar.classList.add('warning');
+            }
+            
+            // WPM 계산 (분당 단어 수)
+            const elapsedMinutes = (Date.now() - gameStartTime) / 60000;
+            const wpm = elapsedMinutes > 0 ? Math.round(wordsCompleted / elapsedMinutes) : 0;
+            wpmEl.textContent = wpm;
+            
+            if (timeLeft <= 0) {
+                endGame();
+            }
+        }
+
+        function updateStats() {
+            scoreEl.textContent = score;
+            const accuracy = totalChars > 0 ? Math.round((correctChars / totalChars) * 100) : 100;
+            accuracyEl.textContent = accuracy + '%';
+        }
+
+        // 입력 처리
+        typingInput.addEventListener('input', () => {
+            if (!isPlaying) return;
+            
+            const typed = typingInput.value.toLowerCase();
+            totalChars++;
+            
+            // 현재 입력이 맞는지 체크
+            const lastChar = typed[typed.length - 1];
+            const expectedChar = currentWord[typed.length - 1];
+            
+            if (lastChar === expectedChar) {
+                correctChars++;
+                typingInput.classList.remove('wrong');
+                playCorrect();
+            } else {
+                typingInput.classList.add('wrong');
+                typingInput.classList.remove('correct');
+                combo = 0;
+                comboDisplay.classList.remove('show');
+                playWrong();
+            }
+            
+            updateWordDisplay();
+            updateStats();
+        });
+
+        // Enter/Space로 단어 제출
+        typingInput.addEventListener('keydown', (e) => {
+            if (!isPlaying) return;
+            
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                submitWord();
+            }
+        });
+
+        function submitWord() {
+            const typed = typingInput.value.toLowerCase().trim();
+            
+            if (typed === currentWord) {
+                // 정답!
+                wordsCompleted++;
+                combo++;
+                if (combo > maxCombo) maxCombo = combo;
+                
+                // 점수 계산 (길이 + 콤보 보너스)
+                const baseScore = currentWord.length * 10;
+                const comboBonus = Math.floor(combo / 5) * 5;
+                const diffBonus = difficulty === 'hard' ? 20 : difficulty === 'normal' ? 10 : 0;
+                score += baseScore + comboBonus + diffBonus;
+                
+                // 콤보 표시
+                if (combo >= 3) {
+                    comboDisplay.textContent = `🔥 ${combo} 콤보!`;
+                    comboDisplay.classList.add('show');
+                    if (combo % 5 === 0) playCombo();
+                }
+                
+                // 시간 보너스 (어려운 단어일수록 더 많이)
+                const timeBonus = difficulty === 'hard' ? 2 : difficulty === 'normal' ? 1.5 : 1;
+                timeLeft = Math.min(gameTime, timeLeft + timeBonus);
+                
+                typingInput.classList.add('correct');
+                typingInput.classList.remove('wrong');
+                playComplete();
+                
+                // 다음 단어
+                currentWord = nextWord;
+                nextWord = getNextWord();
+                nextWordEl.innerHTML = `다음: <span>${nextWord}</span>`;
+            } else {
+                // 틀림
+                combo = 0;
+                comboDisplay.classList.remove('show');
+                typingInput.classList.add('wrong');
+                playWrong();
+            }
+            
+            typingInput.value = '';
+            updateWordDisplay();
+            updateStats();
+        }
+
+        function endGame() {
+            clearInterval(timerInterval);
+            isPlaying = false;
+            
+            // 최종 통계 계산
+            const elapsedMinutes = (Date.now() - gameStartTime) / 60000;
+            const finalWpm = elapsedMinutes > 0 ? Math.round(wordsCompleted / elapsedMinutes) : 0;
+            const finalAccuracy = totalChars > 0 ? Math.round((correctChars / totalChars) * 100) : 0;
+            
+            // 등급 결정
+            const grade = getGrade(finalWpm, finalAccuracy);
+            
+            // 결과 표시
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('finalWpm').textContent = finalWpm;
+            document.getElementById('finalAccuracy').textContent = finalAccuracy + '%';
+            document.getElementById('finalWords').textContent = wordsCompleted;
+            document.getElementById('maxCombo').textContent = maxCombo;
+            document.getElementById('resultEmoji').textContent = grade.emoji;
+            document.getElementById('resultTitle').textContent = grade.title;
+            document.getElementById('resultGrade').textContent = grade.grade;
+            document.getElementById('resultGrade').className = 'result-grade ' + grade.class;
+            
+            // 최고 기록 저장
+            const key = `typing_${difficulty}`;
+            const best = JSON.parse(localStorage.getItem(key)) || { wpm: 0, accuracy: 0 };
+            if (finalWpm > best.wpm) {
+                best.wpm = finalWpm;
+            }
+            if (finalAccuracy > best.accuracy) {
+                best.accuracy = finalAccuracy;
+            }
+            localStorage.setItem(key, JSON.stringify(best));
+            
+            // 화면 전환
+            gameScreen.style.display = 'none';
+            resultScreen.style.display = 'flex';
+            tip.textContent = '다시 도전해보세요!';
+        }
+
+        function getGrade(wpm, accuracy) {
+            const combined = wpm + accuracy;
+            if (combined >= 150 && accuracy >= 95) return { grade: 'S', emoji: '🏆', title: '타자의 신!', class: 's' };
+            if (combined >= 120 && accuracy >= 90) return { grade: 'A', emoji: '⭐', title: '대단해요!', class: 'a' };
+            if (combined >= 90 && accuracy >= 80) return { grade: 'B', emoji: '👍', title: '좋아요!', class: 'b' };
+            if (combined >= 60) return { grade: 'C', emoji: '😊', title: '괜찮아요!', class: 'c' };
+            return { grade: 'D', emoji: '💪', title: '연습하면 늘어요!', class: 'd' };
+        }
+
+        function showMenu() {
+            gameScreen.style.display = 'none';
+            resultScreen.style.display = 'none';
+            menuScreen.style.display = 'flex';
+            tip.textContent = '난이도를 선택하고 시작하세요';
+            updateBestStats();
+        }
+
+        function updateBestStats() {
+            const key = `typing_${difficulty}`;
+            const best = JSON.parse(localStorage.getItem(key)) || { wpm: 0, accuracy: 0 };
+            document.getElementById('bestWpm').textContent = best.wpm > 0 ? best.wpm : '-';
+            document.getElementById('bestAccuracy').textContent = best.accuracy > 0 ? best.accuracy + '%' : '-';
+        }
+
+        // 초기화
+        updateBestStats();
+
+        // 포커스 유지
+        document.addEventListener('click', () => {
+            if (isPlaying) typingInput.focus();
+        });
+    </script>
+</body>
+</html>
