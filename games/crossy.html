@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#87CEEB">
+    <title>🐔 Crossy Road</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background: #87CEEB;
+            touch-action: none;
+            user-select: none;
+        }
+        body { display: flex; align-items: center; justify-content: center; }
+        canvas { border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+    </style>
+</head>
+<body>
+    <canvas id="game"></canvas>
+    <script src="../framework/game-wrapper.js"></script>
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+
+        const isPC = window.innerWidth > 768;
+        const BASE_WIDTH = isPC ? 400 : 320;
+        const BASE_HEIGHT = isPC ? 600 : 500;
+        let scale = 1, dpr = 1, gameRunning = false;
+
+        const TILE_SIZE = 40;
+        const COLS = Math.floor(BASE_WIDTH / TILE_SIZE);
+        const ROWS = Math.ceil(BASE_HEIGHT / TILE_SIZE) + 5;
+
+        function resizeCanvas() {
+            dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const wW = window.innerWidth, wH = window.innerHeight;
+            const ratio = BASE_WIDTH / BASE_HEIGHT;
+            let dW, dH;
+            if (wW/wH > ratio) { dH = Math.min(wH*0.9, BASE_HEIGHT*2); dW = dH*ratio; }
+            else { dW = Math.min(wW*0.95, BASE_WIDTH*2); dH = dW/ratio; }
+            canvas.style.width = dW+'px'; canvas.style.height = dH+'px';
+            canvas.width = dW*dpr; canvas.height = dH*dpr;
+            scale = (dW/BASE_WIDTH)*dpr;
+            ctx.setTransform(scale,0,0,scale,0,0);
+        }
+
+        // 게임 변수
+        let score = 0, bestScore = localStorage.getItem('crossyBest') || 0;
+        let cameraY = 0;
+        let targetCameraY = 0;
+        let deathTimer = 0;
+
+        // 플레이어
+        const player = {
+            x: Math.floor(COLS / 2),
+            y: 0,
+            targetX: 0,
+            targetY: 0,
+            hopProgress: 1,
+            direction: 0, // 0: up, 1: right, 2: down, 3: left
+            dead: false,
+            deathType: null
+        };
+
+        // 맵 생성
+        let rows = [];
+        let obstacles = {};
+
+        const ROW_TYPES = {
+            GRASS: 'grass',
+            ROAD: 'road',
+            WATER: 'water',
+            RAIL: 'rail'
+        };
+
+        const COLORS = {
+            grass: ['#7ec850', '#6ab842'],
+            road: ['#4a4a4a', '#3a3a3a'],
+            water: ['#4a90d9', '#3a7fc9'],
+            rail: ['#8b7355', '#7a6244'],
+            sidewalk: '#888'
+        };
+
+        function generateRow(y) {
+            if (y <= 2) return { type: ROW_TYPES.GRASS, variant: y % 2 };
+            
+            const rand = Math.random();
+            let type;
+            
+            if (rand < 0.35) type = ROW_TYPES.GRASS;
+            else if (rand < 0.7) type = ROW_TYPES.ROAD;
+            else if (rand < 0.9) type = ROW_TYPES.WATER;
+            else type = ROW_TYPES.RAIL;
+
+            const row = {
+                type,
+                variant: Math.floor(Math.random() * 2),
+                speed: (0.5 + Math.random() * 1.5) * (Math.random() < 0.5 ? 1 : -1),
+                hasTree: []
+            };
+
+            // 잔디에 나무 추가
+            if (type === ROW_TYPES.GRASS) {
+                for (let x = 0; x < COLS; x++) {
+                    if (Math.random() < 0.2 && x !== Math.floor(COLS/2)) {
+                        row.hasTree.push(x);
+                    }
+                }
+            }
+
+            return row;
+        }
+
+        function getRow(y) {
+            if (!rows[y]) {
+                rows[y] = generateRow(y);
+                generateObstacles(y);
+            }
+            return rows[y];
+        }
+
+        function generateObstacles(y) {
+            const row = rows[y];
+            if (!row) return;
+
+            if (!obstacles[y]) obstacles[y] = [];
+
+            if (row.type === ROW_TYPES.ROAD) {
+                // 차량 생성
+                const numCars = 1 + Math.floor(Math.random() * 2);
+                const carTypes = [
+                    { w: 60, h: 30, color: '#e74c3c' },
+                    { w: 50, h: 28, color: '#3498db' },
+                    { w: 70, h: 32, color: '#f1c40f' },
+                    { w: 80, h: 35, color: '#2ecc71' }
+                ];
+                for (let i = 0; i < numCars; i++) {
+                    const carType = carTypes[Math.floor(Math.random() * carTypes.length)];
+                    obstacles[y].push({
+                        type: 'car',
+                        x: Math.random() * BASE_WIDTH * 2 - BASE_WIDTH/2,
+                        w: carType.w,
+                        h: carType.h,
+                        color: carType.color
+                    });
+                }
+            } else if (row.type === ROW_TYPES.WATER) {
+                // 통나무 생성
+                const numLogs = 2 + Math.floor(Math.random() * 2);
+                for (let i = 0; i < numLogs; i++) {
+                    obstacles[y].push({
+                        type: 'log',
+                        x: i * (BASE_WIDTH / numLogs) + Math.random() * 50,
+                        w: 80 + Math.random() * 40,
+                        h: 35
+                    });
+                }
+            } else if (row.type === ROW_TYPES.RAIL) {
+                // 기차
+                if (Math.random() < 0.3) {
+                    obstacles[y].push({
+                        type: 'train',
+                        x: -500,
+                        w: 300,
+                        h: 38,
+                        warning: 0,
+                        active: false,
+                        cooldown: 100 + Math.floor(Math.random() * 200)
+                    });
+                }
+            }
+        }
+
+        // 플레이어 그리기 (귀여운 닭!)
+        function drawPlayer() {
+            const px = player.x * TILE_SIZE + TILE_SIZE/2;
+            const py = (player.y - cameraY) * TILE_SIZE + TILE_SIZE/2;
+            
+            // 점프 애니메이션
+            const hopOffset = Math.sin(player.hopProgress * Math.PI) * 8;
+            const squash = 1 - Math.sin(player.hopProgress * Math.PI) * 0.2;
+
+            ctx.save();
+            ctx.translate(px, py - hopOffset);
+            
+            // 방향에 따라 회전
+            const angles = [0, Math.PI/2, Math.PI, -Math.PI/2];
+            ctx.rotate(angles[player.direction]);
+            ctx.scale(1, squash);
+
+            if (player.dead) {
+                // 죽음 애니메이션
+                ctx.globalAlpha = 1 - deathTimer / 60;
+                ctx.rotate(deathTimer * 0.1);
+            }
+
+            // 몸통 (흰색)
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.ellipse(0, 2, 14, 16, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ddd';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 날개
+            ctx.fillStyle = '#f5f5f5';
+            ctx.beginPath();
+            ctx.ellipse(-10, 5, 6, 10, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(10, 5, 6, 10, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 머리
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(0, -12, 10, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // 볏 (빨간색)
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.moveTo(-3, -22);
+            ctx.quadraticCurveTo(0, -28, 3, -22);
+            ctx.quadraticCurveTo(6, -26, 8, -20);
+            ctx.quadraticCurveTo(4, -18, 0, -18);
+            ctx.quadraticCurveTo(-4, -18, -6, -20);
+            ctx.quadraticCurveTo(-3, -24, -3, -22);
+            ctx.fill();
+
+            // 부리 (주황색)
+            ctx.fillStyle = '#f39c12';
+            ctx.beginPath();
+            ctx.moveTo(0, -12);
+            ctx.lineTo(-4, -8);
+            ctx.lineTo(4, -8);
+            ctx.closePath();
+            ctx.fill();
+
+            // 눈
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(-4, -14, 2.5, 0, Math.PI * 2);
+            ctx.arc(4, -14, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 눈 하이라이트
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(-3, -15, 1, 0, Math.PI * 2);
+            ctx.arc(5, -15, 1, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // 배경 그리기
+        function drawBackground() {
+            const startY = Math.floor(cameraY) - 2;
+            const endY = startY + ROWS + 4;
+
+            for (let y = startY; y < endY; y++) {
+                const row = getRow(y);
+                const screenY = (y - cameraY) * TILE_SIZE;
+
+                // 바닥 색상
+                ctx.fillStyle = COLORS[row.type][row.variant];
+                ctx.fillRect(0, screenY, BASE_WIDTH, TILE_SIZE);
+
+                // 도로 디테일
+                if (row.type === ROW_TYPES.ROAD) {
+                    ctx.strokeStyle = '#fff';
+                    ctx.setLineDash([20, 20]);
+                    ctx.beginPath();
+                    ctx.moveTo(0, screenY + TILE_SIZE/2);
+                    ctx.lineTo(BASE_WIDTH, screenY + TILE_SIZE/2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+
+                // 철도 디테일
+                if (row.type === ROW_TYPES.RAIL) {
+                    ctx.strokeStyle = '#555';
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.moveTo(0, screenY + 12);
+                    ctx.lineTo(BASE_WIDTH, screenY + 12);
+                    ctx.moveTo(0, screenY + TILE_SIZE - 12);
+                    ctx.lineTo(BASE_WIDTH, screenY + TILE_SIZE - 12);
+                    ctx.stroke();
+                    ctx.lineWidth = 1;
+                    
+                    // 침목
+                    ctx.fillStyle = '#654321';
+                    for (let x = 0; x < BASE_WIDTH; x += 30) {
+                        ctx.fillRect(x, screenY + 5, 8, TILE_SIZE - 10);
+                    }
+                }
+
+                // 나무 그리기
+                if (row.hasTree) {
+                    row.hasTree.forEach(treeX => {
+                        drawTree(treeX * TILE_SIZE + TILE_SIZE/2, screenY + TILE_SIZE/2);
+                    });
+                }
+            }
+        }
+
+        // 나무 그리기
+        function drawTree(x, y) {
+            // 줄기
+            ctx.fillStyle = '#8b4513';
+            ctx.fillRect(x - 6, y - 5, 12, 25);
+            
+            // 잎
+            ctx.fillStyle = '#228b22';
+            ctx.beginPath();
+            ctx.arc(x, y - 15, 18, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#2d9f2d';
+            ctx.beginPath();
+            ctx.arc(x - 5, y - 20, 12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(x + 8, y - 12, 10, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // 장애물 그리기
+        function drawObstacles() {
+            const startY = Math.floor(cameraY) - 2;
+            const endY = startY + ROWS + 4;
+
+            for (let y = startY; y < endY; y++) {
+                if (!obstacles[y]) continue;
+                const row = getRow(y);
+                const screenY = (y - cameraY) * TILE_SIZE;
+
+                obstacles[y].forEach(obs => {
+                    if (obs.type === 'car') {
+                        drawCar(obs, screenY);
+                    } else if (obs.type === 'log') {
+                        drawLog(obs, screenY);
+                    } else if (obs.type === 'train') {
+                        drawTrain(obs, screenY, y);
+                    }
+                });
+            }
+        }
+
+        // 차량 그리기
+        function drawCar(car, screenY) {
+            const y = screenY + TILE_SIZE/2 - car.h/2;
+            
+            // 차체
+            ctx.fillStyle = car.color;
+            ctx.beginPath();
+            ctx.roundRect(car.x, y, car.w, car.h, 6);
+            ctx.fill();
+            
+            // 창문
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(car.x + car.w * 0.2, y + 4, car.w * 0.3, car.h - 8);
+            ctx.fillRect(car.x + car.w * 0.55, y + 4, car.w * 0.25, car.h - 8);
+            
+            // 바퀴
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.arc(car.x + 12, y + car.h, 6, 0, Math.PI * 2);
+            ctx.arc(car.x + car.w - 12, y + car.h, 6, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // 통나무 그리기
+        function drawLog(log, screenY) {
+            const y = screenY + TILE_SIZE/2 - log.h/2;
+            
+            ctx.fillStyle = '#8b4513';
+            ctx.beginPath();
+            ctx.roundRect(log.x, y, log.w, log.h, 8);
+            ctx.fill();
+            
+            // 나무 질감
+            ctx.strokeStyle = '#654321';
+            ctx.lineWidth = 2;
+            for (let i = 1; i < 4; i++) {
+                ctx.beginPath();
+                ctx.moveTo(log.x + log.w * i/4, y + 5);
+                ctx.lineTo(log.x + log.w * i/4, y + log.h - 5);
+                ctx.stroke();
+            }
+            ctx.lineWidth = 1;
+            
+            // 끝 원
+            ctx.fillStyle = '#a0522d';
+            ctx.beginPath();
+            ctx.ellipse(log.x + 5, y + log.h/2, 5, log.h/2 - 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(log.x + log.w - 5, y + log.h/2, 5, log.h/2 - 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // 기차 그리기
+        function drawTrain(train, screenY, rowY) {
+            // 경고 표시
+            if (train.warning > 0 && !train.active) {
+                ctx.fillStyle = `rgba(255, 0, 0, ${0.3 + Math.sin(Date.now() * 0.02) * 0.3})`;
+                ctx.fillRect(0, screenY, BASE_WIDTH, TILE_SIZE);
+                
+                // 경고 아이콘
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 20px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('⚠️ 기차!', BASE_WIDTH/2, screenY + TILE_SIZE/2 + 6);
+            }
+
+            if (train.active || train.x > -train.w) {
+                const y = screenY + TILE_SIZE/2 - train.h/2;
+                
+                // 기차 본체
+                ctx.fillStyle = '#2c3e50';
+                ctx.fillRect(train.x, y, train.w, train.h);
+                
+                // 창문
+                ctx.fillStyle = '#f1c40f';
+                for (let i = 0; i < 5; i++) {
+                    ctx.fillRect(train.x + 20 + i * 55, y + 8, 35, 22);
+                }
+                
+                // 바퀴
+                ctx.fillStyle = '#1a1a1a';
+                for (let i = 0; i < 6; i++) {
+                    ctx.beginPath();
+                    ctx.arc(train.x + 30 + i * 50, y + train.h + 2, 8, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        // UI 그리기
+        function drawUI() {
+            // 점수
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.beginPath();
+            ctx.roundRect(BASE_WIDTH/2 - 50, 15, 100, 40, 20);
+            ctx.fill();
+            
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 24px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(score, BASE_WIDTH/2, 44);
+
+            // 최고 점수
+            ctx.font = '12px sans-serif';
+            ctx.fillStyle = 'rgba(255,255,255,0.7)';
+            ctx.fillText(`BEST: ${bestScore}`, BASE_WIDTH/2, 68);
+        }
+
+        // 이동
+        function move(dx, dy) {
+            if (!gameRunning || player.dead) return;
+            if (player.hopProgress < 1) return;
+
+            const newX = player.x + dx;
+            const newY = player.y + dy;
+
+            // 화면 밖 체크
+            if (newX < 0 || newX >= COLS) return;
+
+            // 나무 충돌 체크
+            const targetRow = getRow(newY);
+            if (targetRow.hasTree && targetRow.hasTree.includes(newX)) return;
+
+            // 이동 시작
+            player.targetX = newX;
+            player.targetY = newY;
+            player.hopProgress = 0;
+            
+            // 방향 설정
+            if (dy < 0) player.direction = 0; // 위
+            else if (dx > 0) player.direction = 1; // 오른쪽
+            else if (dy > 0) player.direction = 2; // 아래
+            else if (dx < 0) player.direction = 3; // 왼쪽
+
+            // 점수 업데이트 (위로 갈 때만)
+            if (dy < 0 && newY > score) {
+                score = newY;
+            }
+        }
+
+        // 충돌 체크
+        function checkCollisions() {
+            const row = getRow(player.y);
+            const px = player.x * TILE_SIZE + TILE_SIZE/2;
+            const py = player.y;
+
+            // 물에 빠짐 체크
+            if (row.type === ROW_TYPES.WATER) {
+                let onLog = false;
+                if (obstacles[py]) {
+                    obstacles[py].forEach(obs => {
+                        if (obs.type === 'log') {
+                            if (px > obs.x - 10 && px < obs.x + obs.w + 10) {
+                                onLog = true;
+                                // 통나무와 함께 이동
+                                player.x += row.speed * 0.02;
+                            }
+                        }
+                    });
+                }
+                if (!onLog && player.hopProgress >= 1) {
+                    player.dead = true;
+                    player.deathType = 'drown';
+                    return;
+                }
+            }
+
+            // 차/기차 충돌 체크
+            if (obstacles[py]) {
+                obstacles[py].forEach(obs => {
+                    if (obs.type === 'car' || (obs.type === 'train' && obs.active)) {
+                        const carLeft = obs.x;
+                        const carRight = obs.x + obs.w;
+                        if (px > carLeft - 15 && px < carRight + 15) {
+                            player.dead = true;
+                            player.deathType = obs.type === 'train' ? 'train' : 'car';
+                        }
+                    }
+                });
+            }
+
+            // 화면 아래로 밀려남
+            if (player.y < cameraY - 1) {
+                player.dead = true;
+                player.deathType = 'timeout';
+            }
+        }
+
+        // 업데이트
+        function update() {
+            if (!gameRunning) return;
+
+            // 점프 애니메이션
+            if (player.hopProgress < 1) {
+                player.hopProgress += 0.15;
+                if (player.hopProgress >= 1) {
+                    player.hopProgress = 1;
+                    player.x = player.targetX;
+                    player.y = player.targetY;
+                }
+            }
+
+            // 카메라 이동
+            targetCameraY = Math.max(targetCameraY, player.y - 8);
+            cameraY += (targetCameraY - cameraY) * 0.1;
+
+            // 장애물 이동
+            const startY = Math.floor(cameraY) - 2;
+            const endY = startY + ROWS + 4;
+
+            for (let y = startY; y < endY; y++) {
+                const row = getRow(y);
+                if (!obstacles[y]) continue;
+
+                obstacles[y].forEach(obs => {
+                    if (obs.type === 'car') {
+                        obs.x += row.speed;
+                        if (obs.x > BASE_WIDTH + 100) obs.x = -obs.w - 50;
+                        if (obs.x < -obs.w - 100) obs.x = BASE_WIDTH + 50;
+                    } else if (obs.type === 'log') {
+                        obs.x += row.speed * 0.8;
+                        if (obs.x > BASE_WIDTH + 100) obs.x = -obs.w - 50;
+                        if (obs.x < -obs.w - 100) obs.x = BASE_WIDTH + 50;
+                    } else if (obs.type === 'train') {
+                        if (!obs.active) {
+                            obs.cooldown--;
+                            if (obs.cooldown <= 60 && obs.cooldown > 0) {
+                                obs.warning = obs.cooldown;
+                            }
+                            if (obs.cooldown <= 0) {
+                                obs.active = true;
+                                obs.x = row.speed > 0 ? -obs.w - 50 : BASE_WIDTH + 50;
+                            }
+                        } else {
+                            obs.x += row.speed * 4;
+                            if ((row.speed > 0 && obs.x > BASE_WIDTH + 100) ||
+                                (row.speed < 0 && obs.x < -obs.w - 100)) {
+                                obs.active = false;
+                                obs.warning = 0;
+                                obs.cooldown = 150 + Math.floor(Math.random() * 200);
+                                obs.x = -500;
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 충돌 체크
+            if (!player.dead) {
+                checkCollisions();
+            }
+
+            // 죽음 처리
+            if (player.dead) {
+                deathTimer++;
+                if (deathTimer > 60) {
+                    endGame();
+                }
+            }
+        }
+
+        // 렌더링
+        function render() {
+            ctx.setTransform(scale, 0, 0, scale, 0, 0);
+            
+            // 하늘 배경
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+
+            drawBackground();
+            drawObstacles();
+            drawPlayer();
+            drawUI();
+        }
+
+        function gameLoop() {
+            update();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 키보드 입력
+        document.addEventListener('keydown', e => {
+            if (!gameRunning) return;
+            switch(e.key) {
+                case 'ArrowUp': case 'w': case 'W': move(0, 1); break;
+                case 'ArrowDown': case 's': case 'S': move(0, -1); break;
+                case 'ArrowLeft': case 'a': case 'A': move(-1, 0); break;
+                case 'ArrowRight': case 'd': case 'D': move(1, 0); break;
+            }
+            e.preventDefault();
+        });
+
+        // 터치/스와이프 입력
+        let touchStartX = 0, touchStartY = 0;
+        
+        canvas.addEventListener('touchstart', e => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', e => {
+            e.preventDefault();
+            const touch = e.changedTouches[0];
+            const dx = touch.clientX - touchStartX;
+            const dy = touch.clientY - touchStartY;
+            
+            // 탭 (짧은 거리) = 위로 이동
+            if (Math.abs(dx) < 20 && Math.abs(dy) < 20) {
+                move(0, 1);
+                return;
+            }
+            
+            // 스와이프
+            if (Math.abs(dx) > Math.abs(dy)) {
+                if (dx > 30) move(1, 0);
+                else if (dx < -30) move(-1, 0);
+            } else {
+                if (dy < -30) move(0, 1); // 위로 스와이프 = 앞으로
+                else if (dy > 30) move(0, -1); // 아래로 스와이프 = 뒤로
+            }
+        }, { passive: false });
+
+        // 클릭 = 위로 이동 (PC)
+        canvas.addEventListener('click', () => {
+            move(0, 1);
+        });
+
+        function endGame() {
+            gameRunning = false;
+            if (score > bestScore) {
+                bestScore = score;
+                localStorage.setItem('crossyBest', bestScore);
+            }
+            window.gameOver(score);
+        }
+
+        function initGame() {
+            player.x = Math.floor(COLS / 2);
+            player.y = 0;
+            player.targetX = player.x;
+            player.targetY = player.y;
+            player.hopProgress = 1;
+            player.direction = 0;
+            player.dead = false;
+            player.deathType = null;
+            
+            score = 0;
+            cameraY = -3;
+            targetCameraY = -3;
+            deathTimer = 0;
+            
+            rows = [];
+            obstacles = {};
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        resizeCanvas();
+        window.GAME = {
+            name: 'Crossy Road',
+            emoji: '🐔',
+            image: '../assets/character-crossy.svg',
+            start: () => { gameRunning = true; },
+            reset: () => { initGame(); render(); },
+            stop: () => { gameRunning = false; }
+        };
+        initGame();
+        gameLoop();
+    </script>
+</body>
+</html>

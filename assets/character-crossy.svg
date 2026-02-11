@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- 귀여운 닭 캐릭터 -->
+  
+  <!-- 그림자 -->
+  <ellipse cx="50" cy="92" rx="25" ry="6" fill="rgba(0,0,0,0.15)"/>
+  
+  <!-- 발 -->
+  <g fill="#f39c12">
+    <path d="M35 82 L30 90 L32 90 L35 85 L38 90 L40 90 L37 82 Z"/>
+    <path d="M63 82 L58 90 L60 90 L63 85 L66 90 L68 90 L65 82 Z"/>
+  </g>
+  
+  <!-- 몸통 -->
+  <ellipse cx="50" cy="62" rx="22" ry="26" fill="#fff" stroke="#e0e0e0" stroke-width="2"/>
+  
+  <!-- 날개 왼쪽 -->
+  <ellipse cx="30" cy="60" rx="8" ry="14" fill="#f5f5f5" stroke="#e0e0e0" stroke-width="1"/>
+  
+  <!-- 날개 오른쪽 -->
+  <ellipse cx="70" cy="60" rx="8" ry="14" fill="#f5f5f5" stroke="#e0e0e0" stroke-width="1"/>
+  
+  <!-- 머리 -->
+  <circle cx="50" cy="30" r="18" fill="#fff" stroke="#e0e0e0" stroke-width="2"/>
+  
+  <!-- 볏 (빨간색) -->
+  <path d="M42 12 Q45 5 50 12 Q55 3 58 12 Q62 6 60 15 Q55 12 50 14 Q45 12 40 15 Q38 8 42 12" fill="#e74c3c"/>
+  
+  <!-- 부리 -->
+  <path d="M50 30 L42 38 L50 42 L58 38 Z" fill="#f39c12"/>
+  <path d="M50 30 L42 38 L50 36 L58 38 Z" fill="#e67e22"/>
+  
+  <!-- 눈 -->
+  <g>
+    <circle cx="42" cy="26" r="5" fill="#000"/>
+    <circle cx="58" cy="26" r="5" fill="#000"/>
+    <!-- 눈 하이라이트 -->
+    <circle cx="44" cy="24" r="2" fill="#fff"/>
+    <circle cx="60" cy="24" r="2" fill="#fff"/>
+  </g>
+  
+  <!-- 볼 터치 -->
+  <ellipse cx="35" cy="34" rx="5" ry="3" fill="#ffcccc" opacity="0.6"/>
+  <ellipse cx="65" cy="34" rx="5" ry="3" fill="#ffcccc" opacity="0.6"/>
+  
+  <!-- 꼬리 깃털 -->
+  <g fill="#f5f5f5" stroke="#e0e0e0" stroke-width="1">
+    <ellipse cx="50" cy="88" rx="4" ry="8" transform="rotate(-15 50 88)"/>
+    <ellipse cx="55" cy="87" rx="3" ry="7" transform="rotate(5 55 87)"/>
+    <ellipse cx="45" cy="87" rx="3" ry="7" transform="rotate(-5 45 87)"/>
+  </g>
+</svg>
