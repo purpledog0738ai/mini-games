@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="pacGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffe135"/>
+      <stop offset="100%" style="stop-color:#ffd000"/>
+    </linearGradient>
+    <linearGradient id="ghostRed" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff4444"/>
+      <stop offset="100%" style="stop-color:#cc0000"/>
+    </linearGradient>
+    <linearGradient id="ghostPink" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffb8ff"/>
+      <stop offset="100%" style="stop-color:#ff88ff"/>
+    </linearGradient>
+    <linearGradient id="ghostCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00ffff"/>
+      <stop offset="100%" style="stop-color:#00cccc"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- 배경 (어두운 미로) -->
+  <rect width="100" height="100" fill="#000"/>
+  
+  <!-- 미로 벽들 -->
+  <rect x="5" y="5" width="90" height="4" rx="2" fill="#2121de"/>
+  <rect x="5" y="91" width="90" height="4" rx="2" fill="#2121de"/>
+  <rect x="5" y="5" width="4" height="90" rx="2" fill="#2121de"/>
+  <rect x="91" y="5" width="4" height="90" rx="2" fill="#2121de"/>
+  
+  <rect x="15" y="15" width="20" height="4" rx="2" fill="#2121de"/>
+  <rect x="65" y="15" width="20" height="4" rx="2" fill="#2121de"/>
+  <rect x="15" y="81" width="20" height="4" rx="2" fill="#2121de"/>
+  <rect x="65" y="81" width="20" height="4" rx="2" fill="#2121de"/>
+  
+  <!-- 점들 -->
+  <circle cx="50" cy="15" r="2" fill="#ffb897"/>
+  <circle cx="12" cy="50" r="2" fill="#ffb897"/>
+  <circle cx="88" cy="50" r="2" fill="#ffb897"/>
+  <circle cx="50" cy="85" r="2" fill="#ffb897"/>
+  
+  <!-- 파워펠렛 -->
+  <circle cx="12" cy="12" r="4" fill="#ffb897">
+    <animate attributeName="opacity" values="1;0.3;1" dur="0.5s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="88" cy="88" r="4" fill="#ffb897">
+    <animate attributeName="opacity" values="1;0.3;1" dur="0.5s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- 빨간 유령 (뒤쪽) -->
+  <g transform="translate(70, 35)">
+    <path d="M0,12 Q0,0 12,0 Q24,0 24,12 L24,22 L20,18 L16,22 L12,18 L8,22 L4,18 L0,22 Z" fill="url(#ghostRed)"/>
+    <circle cx="8" cy="10" r="4" fill="white"/>
+    <circle cx="16" cy="10" r="4" fill="white"/>
+    <circle cx="9" cy="10" r="2" fill="#2121de"/>
+    <circle cx="17" cy="10" r="2" fill="#2121de"/>
+  </g>
+  
+  <!-- 핑크 유령 (왼쪽 뒤) -->
+  <g transform="translate(15, 55)">
+    <path d="M0,10 Q0,0 10,0 Q20,0 20,10 L20,18 L16,15 L12,18 L8,15 L4,18 L0,18 Z" fill="url(#ghostPink)"/>
+    <circle cx="6" cy="8" r="3" fill="white"/>
+    <circle cx="14" cy="8" r="3" fill="white"/>
+    <circle cx="5" cy="8" r="1.5" fill="#2121de"/>
+    <circle cx="13" cy="8" r="1.5" fill="#2121de"/>
+  </g>
+  
+  <!-- 시안 유령 (오른쪽 아래) -->
+  <g transform="translate(72, 65)">
+    <path d="M0,8 Q0,0 8,0 Q16,0 16,8 L16,14 L13,12 L10,14 L6,12 L3,14 L0,14 Z" fill="url(#ghostCyan)"/>
+    <circle cx="5" cy="6" r="2.5" fill="white"/>
+    <circle cx="11" cy="6" r="2.5" fill="white"/>
+    <circle cx="4" cy="6" r="1.2" fill="#2121de"/>
+    <circle cx="10" cy="6" r="1.2" fill="#2121de"/>
+  </g>
+  
+  <!-- 팩맨 (주인공, 중앙) -->
+  <g transform="translate(35, 38)">
+    <path d="M25,0 A25,25 0 1 1 25,50 A25,25 0 1 1 25,0" fill="url(#pacGrad)"/>
+    <path d="M25,25 L50,10 L50,40 Z" fill="#000"/>
+    <!-- 눈 -->
+    <circle cx="28" cy="15" r="4" fill="#000"/>
+    <!-- 볼 하이라이트 -->
+    <circle cx="18" cy="20" r="6" fill="#fff" opacity="0.2"/>
+  </g>
+  
+  <!-- 점 트레일 -->
+  <circle cx="25" cy="50" r="2" fill="#ffb897" opacity="0.5"/>
+  <circle cx="18" cy="50" r="2" fill="#ffb897" opacity="0.3"/>
+</svg>

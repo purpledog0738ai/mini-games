@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#000000">
+    <title>👻 Pacman</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background: #000;
+            touch-action: none;
+            user-select: none;
+        }
+        body { display: flex; align-items: center; justify-content: center; }
+        canvas { border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <canvas id="game"></canvas>
+    <script src="../framework/game-wrapper.js"></script>
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+
+        const isPC = window.innerWidth > 768;
+        const BASE_WIDTH = 224;  // 클래식 팩맨 비율
+        const BASE_HEIGHT = 288;
+        let scale = 1, dpr = 1, gameRunning = false;
+
+        const TILE_SIZE = 8;
+        const COLS = 28;
+        const ROWS = 36;
+
+        function resizeCanvas() {
+            dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const wW = window.innerWidth, wH = window.innerHeight;
+            const ratio = BASE_WIDTH / BASE_HEIGHT;
+            let dW, dH;
+            if (wW/wH > ratio) { dH = Math.min(wH*0.95, BASE_HEIGHT*3); dW = dH*ratio; }
+            else { dW = Math.min(wW*0.95, BASE_WIDTH*3); dH = dW/ratio; }
+            canvas.style.width = dW+'px'; canvas.style.height = dH+'px';
+            canvas.width = dW*dpr; canvas.height = dH*dpr;
+            scale = (dW/BASE_WIDTH)*dpr;
+            ctx.setTransform(scale,0,0,scale,0,0);
+        }
+
+        // 맵 (0:빈공간, 1:벽, 2:점, 3:파워펠렛, 4:유령집입구)
+        const MAP_TEMPLATE = [
+            "1111111111111111111111111111",
+            "1222222222222112222222222221",
+            "1211112111112112111112111121",
+            "1311112111112112111112111131",
+            "1211112111112112111112111121",
+            "1222222222222222222222222221",
+            "1211112112111111112112111121",
+            "1211112112111111112112111121",
+            "1222222112222112222112222221",
+            "1111112111110110111112111111",
+            "0000012111110110111112100000",
+            "0000012110000000001112100000",
+            "0000012110111441110112100000",
+            "1111112110100000010112111111",
+            "0000002000100000010002000000",
+            "1111112110100000010112111111",
+            "0000012110111111110112100000",
+            "0000012110000000001112100000",
+            "0000012110111111110112100000",
+            "1111112110111111110112111111",
+            "1222222222222112222222222221",
+            "1211112111112112111112111121",
+            "1211112111112112111112111121",
+            "1322112222222002222222112231",
+            "1112112112111111112112112111",
+            "1112112112111111112112112111",
+            "1222222112222112222112222221",
+            "1211111111112112111111111121",
+            "1211111111112112111111111121",
+            "1222222222222222222222222221",
+            "1111111111111111111111111111",
+        ];
+
+        let map = [];
+        let dots = 0;
+        let totalDots = 0;
+
+        // 팩맨
+        const pacman = {
+            x: 14, y: 23,
+            dir: 0, nextDir: 0,
+            mouthAngle: 0.2,
+            mouthDir: 1,
+            speed: 0.08
+        };
+
+        // 유령 색상
+        const GHOST_COLORS = ['#ff0000', '#ffb8ff', '#00ffff', '#ffb852']; // 빨강, 핑크, 시안, 오렌지
+
+        // 유령
+        let ghosts = [];
+
+        // 게임 상태
+        let score = 0;
+        let bestScore = localStorage.getItem('pacmanBest') || 0;
+        let lives = 3;
+        let level = 1;
+        let powerMode = false;
+        let powerTimer = 0;
+        let frameCount = 0;
+        let ghostsEaten = 0;
+
+        // 방향 벡터
+        const DIR = [
+            {x: 1, y: 0},   // 오른쪽
+            {x: 0, y: 1},   // 아래
+            {x: -1, y: 0},  // 왼쪽
+            {x: 0, y: -1}   // 위
+        ];
+
+        function initMap() {
+            map = [];
+            dots = 0;
+            for (let y = 0; y < MAP_TEMPLATE.length; y++) {
+                const row = [];
+                for (let x = 0; x < MAP_TEMPLATE[y].length; x++) {
+                    const cell = parseInt(MAP_TEMPLATE[y][x]);
+                    row.push(cell);
+                    if (cell === 2 || cell === 3) dots++;
+                }
+                map.push(row);
+            }
+            totalDots = dots;
+        }
+
+        function initGhosts() {
+            ghosts = [
+                { x: 14, y: 11, dir: 0, color: GHOST_COLORS[0], mode: 'scatter', homeX: 26, homeY: 0, inHouse: false, scared: false, eaten: false },
+                { x: 12, y: 14, dir: 0, color: GHOST_COLORS[1], mode: 'scatter', homeX: 2, homeY: 0, inHouse: true, scared: false, eaten: false, timer: 60 },
+                { x: 14, y: 14, dir: 0, color: GHOST_COLORS[2], mode: 'scatter', homeX: 26, homeY: 35, inHouse: true, scared: false, eaten: false, timer: 120 },
+                { x: 16, y: 14, dir: 0, color: GHOST_COLORS[3], mode: 'scatter', homeX: 2, homeY: 35, inHouse: true, scared: false, eaten: false, timer: 180 }
+            ];
+        }
+
+        function initGame() {
+            initMap();
+            initGhosts();
+            pacman.x = 14; pacman.y = 23;
+            pacman.dir = 0; pacman.nextDir = 0;
+            score = 0;
+            lives = 3;
+            level = 1;
+            powerMode = false;
+            powerTimer = 0;
+            frameCount = 0;
+            ghostsEaten = 0;
+        }
+
+        function resetPositions() {
+            pacman.x = 14; pacman.y = 23;
+            pacman.dir = 0; pacman.nextDir = 0;
+            initGhosts();
+            powerMode = false;
+            powerTimer = 0;
+        }
+
+        function canMove(x, y) {
+            const mapX = Math.floor(x);
+            const mapY = Math.floor(y);
+            if (mapX < 0 || mapX >= COLS || mapY < 0 || mapY >= map.length) {
+                // 터널 처리
+                return y >= 14 && y <= 15;
+            }
+            return map[mapY] && map[mapY][mapX] !== 1;
+        }
+
+        function canMovePrecise(x, y, dir) {
+            const nextX = x + DIR[dir].x * 0.5;
+            const nextY = y + DIR[dir].y * 0.5;
+            return canMove(Math.floor(nextX + 0.5), Math.floor(nextY + 0.5));
+        }
+
+        // 유령 AI
+        function getGhostTarget(ghost, index) {
+            if (ghost.eaten) {
+                return { x: 14, y: 14 }; // 유령집으로 복귀
+            }
+            if (ghost.scared) {
+                // 무작위 방향
+                return { x: Math.random() * COLS, y: Math.random() * map.length };
+            }
+            
+            const px = Math.floor(pacman.x);
+            const py = Math.floor(pacman.y);
+
+            switch(index) {
+                case 0: // 빨강: 직접 추적
+                    return { x: px, y: py };
+                case 1: // 핑크: 4칸 앞 예측
+                    return { 
+                        x: px + DIR[pacman.dir].x * 4, 
+                        y: py + DIR[pacman.dir].y * 4 
+                    };
+                case 2: // 시안: 복잡한 추적
+                    const ahead = { 
+                        x: px + DIR[pacman.dir].x * 2, 
+                        y: py + DIR[pacman.dir].y * 2 
+                    };
+                    return { 
+                        x: ahead.x + (ahead.x - ghosts[0].x), 
+                        y: ahead.y + (ahead.y - ghosts[0].y) 
+                    };
+                case 3: // 오렌지: 거리 기반
+                    const dist = Math.hypot(ghost.x - px, ghost.y - py);
+                    if (dist > 8) return { x: px, y: py };
+                    return { x: ghost.homeX, y: ghost.homeY };
+                default:
+                    return { x: px, y: py };
+            }
+        }
+
+        function moveGhost(ghost, index) {
+            if (ghost.inHouse) {
+                ghost.timer--;
+                if (ghost.timer <= 0) {
+                    ghost.inHouse = false;
+                    ghost.x = 14;
+                    ghost.y = 11;
+                }
+                return;
+            }
+
+            const speed = ghost.eaten ? 0.12 : (ghost.scared ? 0.04 : 0.06);
+            const target = getGhostTarget(ghost, index);
+
+            // 교차점에서 방향 결정
+            const atCenter = Math.abs(ghost.x - Math.round(ghost.x)) < 0.1 && 
+                            Math.abs(ghost.y - Math.round(ghost.y)) < 0.1;
+
+            if (atCenter) {
+                ghost.x = Math.round(ghost.x);
+                ghost.y = Math.round(ghost.y);
+
+                let bestDir = ghost.dir;
+                let bestDist = Infinity;
+                const reverse = (ghost.dir + 2) % 4;
+
+                for (let d = 0; d < 4; d++) {
+                    if (d === reverse) continue; // 뒤로 가기 금지
+                    
+                    const nx = ghost.x + DIR[d].x;
+                    const ny = ghost.y + DIR[d].y;
+                    
+                    if (!canMove(nx, ny)) continue;
+                    if (map[Math.floor(ny)] && map[Math.floor(ny)][Math.floor(nx)] === 4 && !ghost.eaten) continue;
+
+                    const dist = Math.hypot(nx - target.x, ny - target.y);
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        bestDir = d;
+                    }
+                }
+
+                ghost.dir = bestDir;
+            }
+
+            ghost.x += DIR[ghost.dir].x * speed;
+            ghost.y += DIR[ghost.dir].y * speed;
+
+            // 터널
+            if (ghost.x < -1) ghost.x = COLS;
+            if (ghost.x > COLS) ghost.x = -1;
+
+            // 유령집 복귀 완료
+            if (ghost.eaten && Math.abs(ghost.x - 14) < 0.5 && Math.abs(ghost.y - 14) < 0.5) {
+                ghost.eaten = false;
+                ghost.scared = false;
+                ghost.x = 14;
+                ghost.y = 11;
+            }
+        }
+
+        function update() {
+            if (!gameRunning) return;
+            frameCount++;
+
+            // 팩맨 입 애니메이션
+            pacman.mouthAngle += 0.15 * pacman.mouthDir;
+            if (pacman.mouthAngle > 0.5) pacman.mouthDir = -1;
+            if (pacman.mouthAngle < 0.05) pacman.mouthDir = 1;
+
+            // 방향 전환 체크
+            if (canMovePrecise(pacman.x, pacman.y, pacman.nextDir)) {
+                pacman.dir = pacman.nextDir;
+            }
+
+            // 팩맨 이동
+            if (canMovePrecise(pacman.x, pacman.y, pacman.dir)) {
+                pacman.x += DIR[pacman.dir].x * pacman.speed;
+                pacman.y += DIR[pacman.dir].y * pacman.speed;
+            }
+
+            // 터널
+            if (pacman.x < -1) pacman.x = COLS;
+            if (pacman.x > COLS) pacman.x = -1;
+
+            // 점 먹기
+            const mapX = Math.floor(pacman.x + 0.5);
+            const mapY = Math.floor(pacman.y + 0.5);
+            if (map[mapY] && map[mapY][mapX] === 2) {
+                map[mapY][mapX] = 0;
+                score += 10;
+                dots--;
+            } else if (map[mapY] && map[mapY][mapX] === 3) {
+                map[mapY][mapX] = 0;
+                score += 50;
+                dots--;
+                powerMode = true;
+                powerTimer = 360; // 6초
+                ghostsEaten = 0;
+                ghosts.forEach(g => {
+                    if (!g.eaten) g.scared = true;
+                });
+            }
+
+            // 파워모드 타이머
+            if (powerMode) {
+                powerTimer--;
+                if (powerTimer <= 0) {
+                    powerMode = false;
+                    ghosts.forEach(g => g.scared = false);
+                }
+            }
+
+            // 유령 이동
+            ghosts.forEach((g, i) => moveGhost(g, i));
+
+            // 충돌 검사
+            ghosts.forEach(g => {
+                const dist = Math.hypot(pacman.x - g.x, pacman.y - g.y);
+                if (dist < 0.8) {
+                    if (g.scared && !g.eaten) {
+                        // 유령 먹기
+                        g.eaten = true;
+                        g.scared = false;
+                        ghostsEaten++;
+                        score += 200 * Math.pow(2, ghostsEaten - 1);
+                    } else if (!g.eaten) {
+                        // 팩맨 사망
+                        lives--;
+                        if (lives <= 0) {
+                            endGame();
+                        } else {
+                            resetPositions();
+                        }
+                    }
+                }
+            });
+
+            // 스테이지 클리어
+            if (dots <= 0) {
+                level++;
+                initMap();
+                resetPositions();
+                pacman.speed = Math.min(0.12, 0.08 + level * 0.005);
+            }
+        }
+
+        function drawWall(x, y) {
+            ctx.fillStyle = '#2121de';
+            ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            
+            // 벽 테두리 효과
+            ctx.strokeStyle = '#5555ff';
+            ctx.lineWidth = 0.5;
+            
+            const hasLeft = map[y] && map[y][x-1] === 1;
+            const hasRight = map[y] && map[y][x+1] === 1;
+            const hasUp = map[y-1] && map[y-1][x] === 1;
+            const hasDown = map[y+1] && map[y+1][x] === 1;
+            
+            ctx.beginPath();
+            if (!hasLeft) {
+                ctx.moveTo(x * TILE_SIZE + 1, y * TILE_SIZE);
+                ctx.lineTo(x * TILE_SIZE + 1, (y + 1) * TILE_SIZE);
+            }
+            if (!hasRight) {
+                ctx.moveTo((x + 1) * TILE_SIZE - 1, y * TILE_SIZE);
+                ctx.lineTo((x + 1) * TILE_SIZE - 1, (y + 1) * TILE_SIZE);
+            }
+            if (!hasUp) {
+                ctx.moveTo(x * TILE_SIZE, y * TILE_SIZE + 1);
+                ctx.lineTo((x + 1) * TILE_SIZE, y * TILE_SIZE + 1);
+            }
+            if (!hasDown) {
+                ctx.moveTo(x * TILE_SIZE, (y + 1) * TILE_SIZE - 1);
+                ctx.lineTo((x + 1) * TILE_SIZE, (y + 1) * TILE_SIZE - 1);
+            }
+            ctx.stroke();
+        }
+
+        function drawPacman() {
+            const px = pacman.x * TILE_SIZE + TILE_SIZE / 2;
+            const py = pacman.y * TILE_SIZE + TILE_SIZE / 2;
+            const radius = TILE_SIZE * 0.6;
+
+            ctx.fillStyle = '#ffff00';
+            ctx.beginPath();
+            
+            const angle = pacman.dir * Math.PI / 2;
+            const mouth = pacman.mouthAngle * Math.PI;
+            
+            ctx.arc(px, py, radius, angle + mouth, angle + Math.PI * 2 - mouth);
+            ctx.lineTo(px, py);
+            ctx.fill();
+        }
+
+        function drawGhost(ghost) {
+            const gx = ghost.x * TILE_SIZE + TILE_SIZE / 2;
+            const gy = ghost.y * TILE_SIZE + TILE_SIZE / 2;
+            const radius = TILE_SIZE * 0.55;
+
+            // 색상 결정
+            let color = ghost.color;
+            if (ghost.eaten) {
+                // 눈만 그리기
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(gx - 2, gy - 1, 2, 0, Math.PI * 2);
+                ctx.arc(gx + 2, gy - 1, 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#2121de';
+                ctx.beginPath();
+                ctx.arc(gx - 2 + DIR[ghost.dir].x, gy - 1 + DIR[ghost.dir].y, 1, 0, Math.PI * 2);
+                ctx.arc(gx + 2 + DIR[ghost.dir].x, gy - 1 + DIR[ghost.dir].y, 1, 0, Math.PI * 2);
+                ctx.fill();
+                return;
+            }
+            if (ghost.scared) {
+                color = powerTimer < 120 && frameCount % 20 < 10 ? 'white' : '#2121de';
+            }
+
+            // 몸체
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(gx, gy - 1, radius, Math.PI, 0);
+            ctx.lineTo(gx + radius, gy + radius - 2);
+            
+            // 물결 모양 아래
+            const wave = frameCount % 20 < 10 ? 0 : 1;
+            for (let i = 0; i < 3; i++) {
+                const wx = gx + radius - (i + 0.5) * (radius * 2 / 3);
+                const wy = gy + radius - 2 + ((i + wave) % 2 === 0 ? 2 : 0);
+                ctx.lineTo(wx, wy);
+            }
+            ctx.lineTo(gx - radius, gy + radius - 2);
+            ctx.fill();
+
+            // 눈
+            if (ghost.scared) {
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(gx - 2, gy - 1, 1.5, 0, Math.PI * 2);
+                ctx.arc(gx + 2, gy - 1, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(gx - 2, gy - 1, 2.5, 0, Math.PI * 2);
+                ctx.arc(gx + 2, gy - 1, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#2121de';
+                ctx.beginPath();
+                ctx.arc(gx - 2 + DIR[ghost.dir].x * 0.8, gy - 1 + DIR[ghost.dir].y * 0.8, 1.2, 0, Math.PI * 2);
+                ctx.arc(gx + 2 + DIR[ghost.dir].x * 0.8, gy - 1 + DIR[ghost.dir].y * 0.8, 1.2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function render() {
+            ctx.setTransform(scale, 0, 0, scale, 0, 0);
+
+            // 배경
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+
+            // 맵
+            for (let y = 0; y < map.length; y++) {
+                for (let x = 0; x < map[y].length; x++) {
+                    const cell = map[y][x];
+                    if (cell === 1) {
+                        drawWall(x, y);
+                    } else if (cell === 2) {
+                        // 작은 점
+                        ctx.fillStyle = '#ffb897';
+                        ctx.beginPath();
+                        ctx.arc(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 1.5, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (cell === 3) {
+                        // 파워펠렛 (깜빡임)
+                        if (frameCount % 30 < 20) {
+                            ctx.fillStyle = '#ffb897';
+                            ctx.beginPath();
+                            ctx.arc(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 3, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    } else if (cell === 4) {
+                        // 유령집 입구
+                        ctx.fillStyle = '#ffb897';
+                        ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE + 3, TILE_SIZE, 2);
+                    }
+                }
+            }
+
+            // 유령
+            ghosts.forEach(g => drawGhost(g));
+
+            // 팩맨
+            drawPacman();
+
+            // UI
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 8px "Press Start 2P", monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText('SCORE', 5, 8);
+            ctx.fillText(String(score).padStart(6, '0'), 5, 18);
+            
+            ctx.textAlign = 'right';
+            ctx.fillText('HI', BASE_WIDTH - 5, 8);
+            ctx.fillText(String(Math.max(score, bestScore)).padStart(6, '0'), BASE_WIDTH - 5, 18);
+
+            // 목숨
+            ctx.fillStyle = '#ffff00';
+            for (let i = 0; i < lives - 1; i++) {
+                ctx.beginPath();
+                ctx.arc(10 + i * 12, BASE_HEIGHT - 8, 4, 0.2 * Math.PI, 1.8 * Math.PI);
+                ctx.lineTo(10 + i * 12, BASE_HEIGHT - 8);
+                ctx.fill();
+            }
+
+            // 레벨
+            ctx.fillStyle = '#fff';
+            ctx.textAlign = 'right';
+            ctx.fillText('L' + level, BASE_WIDTH - 5, BASE_HEIGHT - 5);
+        }
+
+        function gameLoop() {
+            update();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 방향 설정
+        function setDirection(dir) {
+            if (!gameRunning) return;
+            pacman.nextDir = dir;
+        }
+
+        // 키보드
+        document.addEventListener('keydown', e => {
+            switch(e.code) {
+                case 'ArrowRight': case 'KeyD': setDirection(0); e.preventDefault(); break;
+                case 'ArrowDown': case 'KeyS': setDirection(1); e.preventDefault(); break;
+                case 'ArrowLeft': case 'KeyA': setDirection(2); e.preventDefault(); break;
+                case 'ArrowUp': case 'KeyW': setDirection(3); e.preventDefault(); break;
+            }
+        });
+
+        // 터치 스와이프
+        let touchStartX = 0, touchStartY = 0;
+        canvas.addEventListener('touchstart', e => {
+            e.preventDefault();
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', e => {
+            e.preventDefault();
+            const dx = e.changedTouches[0].clientX - touchStartX;
+            const dy = e.changedTouches[0].clientY - touchStartY;
+            
+            if (Math.abs(dx) > Math.abs(dy)) {
+                setDirection(dx > 0 ? 0 : 2);
+            } else {
+                setDirection(dy > 0 ? 1 : 3);
+            }
+        }, { passive: false });
+
+        function endGame() {
+            gameRunning = false;
+            if (score > bestScore) {
+                bestScore = score;
+                localStorage.setItem('pacmanBest', bestScore);
+            }
+            window.gameOver(score);
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        window.GAME = {
+            name: 'Pacman',
+            emoji: '👻',
+            image: '../assets/character-pacman.svg',
+            start: () => { gameRunning = true; },
+            reset: () => { initGame(); render(); },
+            stop: () => { gameRunning = false; }
+        };
+
+        initGame();
+        gameLoop();
+    </script>
+</body>
+</html>
