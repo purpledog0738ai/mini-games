@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Connect Four - Mini Games</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        body {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3730a3 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            padding: 10px;
+            overflow: hidden;
+        }
+        .header {
+            color: white;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .header h1 {
+            font-size: 1.6rem;
+            margin-bottom: 5px;
+        }
+        .info-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 320px;
+            margin-bottom: 10px;
+            color: white;
+            font-size: 1rem;
+        }
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(255,255,255,0.15);
+            padding: 8px 15px;
+            border-radius: 12px;
+            backdrop-filter: blur(5px);
+        }
+        .score {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .turn-indicator {
+            color: white;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            padding: 8px 20px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 25px;
+            backdrop-filter: blur(5px);
+        }
+        .turn-indicator.red { background: rgba(239, 68, 68, 0.5); }
+        .turn-indicator.yellow { background: rgba(234, 179, 8, 0.5); }
+
+        .board-container {
+            background: linear-gradient(145deg, #2563eb, #1d4ed8);
+            padding: 10px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3), inset 0 2px 0 rgba(255,255,255,0.1);
+        }
+
+        #board {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+        }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .column:hover {
+            transform: translateY(-3px);
+        }
+        .column:active {
+            transform: translateY(0);
+        }
+        .column.disabled {
+            cursor: default;
+            pointer-events: none;
+        }
+
+        .cell {
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle at 30% 30%, #1e40af, #1e3a8a);
+            border-radius: 50%;
+            box-shadow: inset 0 3px 8px rgba(0,0,0,0.4);
+            transition: all 0.1s;
+        }
+
+        .cell.red {
+            background: radial-gradient(circle at 30% 30%, #f87171, #dc2626);
+            box-shadow: inset 0 -3px 8px rgba(0,0,0,0.3), 0 2px 5px rgba(0,0,0,0.2);
+            animation: dropIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .cell.yellow {
+            background: radial-gradient(circle at 30% 30%, #fde047, #eab308);
+            box-shadow: inset 0 -3px 8px rgba(0,0,0,0.3), 0 2px 5px rgba(0,0,0,0.2);
+            animation: dropIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .cell.win {
+            animation: winPulse 0.6s ease-out infinite alternate;
+            box-shadow: 0 0 15px rgba(255,255,255,0.8);
+        }
+
+        @keyframes dropIn {
+            0% { transform: translateY(-200px); opacity: 0; }
+            60% { transform: translateY(10px); }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes winPulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.1); }
+        }
+
+        .preview-row {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+            margin-bottom: 8px;
+            height: 35px;
+        }
+        .preview-cell {
+            width: 40px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .preview-dot {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .preview-dot.show.red {
+            opacity: 0.6;
+            background: radial-gradient(circle at 30% 30%, #f87171, #dc2626);
+        }
+        .preview-dot.show.yellow {
+            opacity: 0.6;
+            background: radial-gradient(circle at 30% 30%, #fde047, #eab308);
+        }
+
+        .controls {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .btn {
+            background: linear-gradient(145deg, #ec4899, #db2777);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(236, 72, 153, 0.4);
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+        .btn.secondary {
+            background: linear-gradient(145deg, #64748b, #475569);
+        }
+
+        .mode-toggle {
+            display: flex;
+            gap: 5px;
+            background: rgba(255,255,255,0.1);
+            padding: 5px;
+            border-radius: 30px;
+            margin-top: 12px;
+        }
+        .mode-btn {
+            background: transparent;
+            color: rgba(255,255,255,0.7);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 25px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .mode-btn.active {
+            background: rgba(255,255,255,0.25);
+            color: white;
+            font-weight: bold;
+        }
+
+        .tip {
+            color: rgba(255,255,255,0.6);
+            font-size: 0.8rem;
+            margin-top: 12px;
+            text-align: center;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        .overlay.show {
+            display: flex;
+        }
+        .modal {
+            background: linear-gradient(135deg, #1e3a8a, #3730a3);
+            padding: 35px;
+            border-radius: 20px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            max-width: 90%;
+        }
+        .modal h2 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+        }
+        .modal p {
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            color: rgba(255,255,255,0.8);
+        }
+        .modal .winner-symbol {
+            font-size: 4rem;
+            margin-bottom: 15px;
+        }
+
+        @media (max-width: 340px) {
+            .cell {
+                width: 35px;
+                height: 35px;
+            }
+            .preview-cell {
+                width: 35px;
+            }
+            .preview-dot {
+                width: 26px;
+                height: 26px;
+            }
+            #board, .preview-row {
+                gap: 5px;
+            }
+        }
+        @media (min-height: 700px) {
+            .cell {
+                width: 45px;
+                height: 45px;
+            }
+            .preview-cell {
+                width: 45px;
+                height: 40px;
+            }
+            .preview-dot {
+                width: 35px;
+                height: 35px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔴 Connect Four</h1>
+    </div>
+
+    <div class="info-bar">
+        <div class="info-item">🔴 <span class="score" id="redScore">0</span></div>
+        <div class="info-item">🤝 <span class="score" id="drawScore">0</span></div>
+        <div class="info-item">🟡 <span class="score" id="yellowScore">0</span></div>
+    </div>
+
+    <div class="turn-indicator red" id="turnIndicator">🔴 빨강 차례</div>
+
+    <div class="preview-row" id="previewRow"></div>
+    <div class="board-container">
+        <div id="board"></div>
+    </div>
+
+    <div class="mode-toggle">
+        <button class="mode-btn active" data-mode="ai" onclick="setMode('ai')">🤖 vs AI</button>
+        <button class="mode-btn" data-mode="pvp" onclick="setMode('pvp')">👥 2인 대전</button>
+    </div>
+
+    <div class="controls">
+        <button class="btn" onclick="resetGame()">🔄 새 게임</button>
+        <button class="btn secondary" onclick="resetScore()">📊 점수 리셋</button>
+    </div>
+
+    <p class="tip">열을 클릭해서 코인을 떨어뜨리세요! 4개 연속 먼저!</p>
+
+    <div class="overlay" id="overlay">
+        <div class="modal">
+            <div class="winner-symbol" id="winnerSymbol">🔴</div>
+            <h2 id="resultTitle">빨강 승리!</h2>
+            <p id="resultText">4개 연속 완성!</p>
+            <button class="btn" onclick="hideOverlay(); resetGame();">다시하기</button>
+        </div>
+    </div>
+
+    <script>
+        const ROWS = 6;
+        const COLS = 7;
+        let board = [];
+        let currentPlayer = 'red';
+        let gameOver = false;
+        let vsAI = true;
+        let scores = { red: 0, yellow: 0, draw: 0 };
+        let hoveredCol = -1;
+
+        const boardEl = document.getElementById('board');
+        const previewEl = document.getElementById('previewRow');
+        const turnEl = document.getElementById('turnIndicator');
+        const redScoreEl = document.getElementById('redScore');
+        const yellowScoreEl = document.getElementById('yellowScore');
+        const drawScoreEl = document.getElementById('drawScore');
+
+        function initBoard() {
+            board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
+        }
+
+        function render() {
+            boardEl.innerHTML = '';
+            previewEl.innerHTML = '';
+
+            // 미리보기 행
+            for (let c = 0; c < COLS; c++) {
+                const previewCell = document.createElement('div');
+                previewCell.className = 'preview-cell';
+                const dot = document.createElement('div');
+                dot.className = 'preview-dot';
+                dot.id = `preview-${c}`;
+                previewCell.appendChild(dot);
+                previewEl.appendChild(previewCell);
+            }
+
+            // 보드 (열 기반으로 렌더링)
+            for (let c = 0; c < COLS; c++) {
+                const colEl = document.createElement('div');
+                colEl.className = 'column' + (gameOver ? ' disabled' : '');
+                colEl.dataset.col = c;
+
+                for (let r = 0; r < ROWS; r++) {
+                    const cellEl = document.createElement('div');
+                    cellEl.className = 'cell';
+                    if (board[r][c]) {
+                        cellEl.classList.add(board[r][c]);
+                    }
+                    colEl.appendChild(cellEl);
+                }
+
+                colEl.addEventListener('click', () => handleClick(c));
+                colEl.addEventListener('mouseenter', () => showPreview(c));
+                colEl.addEventListener('mouseleave', () => hidePreview(c));
+                colEl.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    showPreview(c);
+                });
+                colEl.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    hidePreview(c);
+                    handleClick(c);
+                });
+
+                boardEl.appendChild(colEl);
+            }
+
+            updateTurnIndicator();
+        }
+
+        function showPreview(col) {
+            if (gameOver) return;
+            if (vsAI && currentPlayer === 'yellow') return;
+            
+            const dot = document.getElementById(`preview-${col}`);
+            if (dot && canDrop(col)) {
+                dot.classList.add('show', currentPlayer);
+            }
+            hoveredCol = col;
+        }
+
+        function hidePreview(col) {
+            const dot = document.getElementById(`preview-${col}`);
+            if (dot) {
+                dot.classList.remove('show', 'red', 'yellow');
+            }
+            hoveredCol = -1;
+        }
+
+        function updateTurnIndicator() {
+            if (currentPlayer === 'red') {
+                turnEl.textContent = '🔴 빨강 차례';
+                turnEl.className = 'turn-indicator red';
+            } else {
+                turnEl.textContent = '🟡 노랑 차례';
+                turnEl.className = 'turn-indicator yellow';
+            }
+        }
+
+        function canDrop(col) {
+            return board[0][col] === null;
+        }
+
+        function getDropRow(col) {
+            for (let r = ROWS - 1; r >= 0; r--) {
+                if (board[r][col] === null) return r;
+            }
+            return -1;
+        }
+
+        function handleClick(col) {
+            if (gameOver) return;
+            if (vsAI && currentPlayer === 'yellow') return;
+            if (!canDrop(col)) return;
+
+            makeMove(col);
+
+            if (!gameOver && vsAI && currentPlayer === 'yellow') {
+                setTimeout(aiMove, 500);
+            }
+        }
+
+        function makeMove(col) {
+            const row = getDropRow(col);
+            if (row === -1) return false;
+
+            board[row][col] = currentPlayer;
+            render();
+
+            // 하이라이트 효과
+            const cells = boardEl.querySelectorAll(`.column[data-col="${col}"] .cell`);
+            if (cells[row]) {
+                cells[row].style.animation = 'none';
+                cells[row].offsetHeight;
+                cells[row].style.animation = '';
+            }
+
+            const winner = checkWinner(row, col);
+            if (winner) {
+                gameOver = true;
+                highlightWinner(winner);
+                setTimeout(() => showResult(currentPlayer), 700);
+                return true;
+            }
+
+            if (isBoardFull()) {
+                gameOver = true;
+                setTimeout(() => showResult('draw'), 400);
+                return true;
+            }
+
+            currentPlayer = currentPlayer === 'red' ? 'yellow' : 'red';
+            updateTurnIndicator();
+            return true;
+        }
+
+        function checkWinner(row, col) {
+            const directions = [
+                [[0, 1], [0, -1]],   // 가로
+                [[1, 0], [-1, 0]],   // 세로
+                [[1, 1], [-1, -1]], // 대각선 \
+                [[1, -1], [-1, 1]]  // 대각선 /
+            ];
+
+            for (const [dir1, dir2] of directions) {
+                const cells = [[row, col]];
+                
+                // 방향 1
+                let r = row + dir1[0], c = col + dir1[1];
+                while (r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === currentPlayer) {
+                    cells.push([r, c]);
+                    r += dir1[0];
+                    c += dir1[1];
+                }
+
+                // 방향 2
+                r = row + dir2[0];
+                c = col + dir2[1];
+                while (r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === currentPlayer) {
+                    cells.push([r, c]);
+                    r += dir2[0];
+                    c += dir2[1];
+                }
+
+                if (cells.length >= 4) {
+                    return cells;
+                }
+            }
+            return null;
+        }
+
+        function highlightWinner(cells) {
+            cells.forEach(([r, c]) => {
+                const colEl = boardEl.querySelectorAll('.column')[c];
+                const cellEl = colEl.querySelectorAll('.cell')[r];
+                cellEl.classList.add('win');
+            });
+        }
+
+        function isBoardFull() {
+            return board[0].every(cell => cell !== null);
+        }
+
+        function aiMove() {
+            if (gameOver) return;
+
+            // 1. 이길 수 있으면 이기기
+            const winCol = findWinningCol('yellow');
+            if (winCol !== -1) {
+                makeMove(winCol);
+                return;
+            }
+
+            // 2. 막아야 하면 막기
+            const blockCol = findWinningCol('red');
+            if (blockCol !== -1) {
+                makeMove(blockCol);
+                return;
+            }
+
+            // 3. 중앙 우선
+            const centerOrder = [3, 2, 4, 1, 5, 0, 6];
+            for (const col of centerOrder) {
+                if (canDrop(col)) {
+                    // 이 수가 상대에게 승리 기회를 주는지 확인
+                    const row = getDropRow(col);
+                    if (row > 0) {
+                        board[row][col] = 'yellow';
+                        board[row - 1][col] = 'red';
+                        const givesWin = checkWinner(row - 1, col);
+                        board[row][col] = null;
+                        board[row - 1][col] = null;
+                        if (givesWin) continue;
+                    }
+                    makeMove(col);
+                    return;
+                }
+            }
+
+            // 4. 아무 열
+            for (let col = 0; col < COLS; col++) {
+                if (canDrop(col)) {
+                    makeMove(col);
+                    return;
+                }
+            }
+        }
+
+        function findWinningCol(player) {
+            for (let col = 0; col < COLS; col++) {
+                if (!canDrop(col)) continue;
+                
+                const row = getDropRow(col);
+                board[row][col] = player;
+                const saved = currentPlayer;
+                currentPlayer = player;
+                const isWin = checkWinner(row, col);
+                currentPlayer = saved;
+                board[row][col] = null;
+                
+                if (isWin) return col;
+            }
+            return -1;
+        }
+
+        function showResult(result) {
+            const overlay = document.getElementById('overlay');
+            const title = document.getElementById('resultTitle');
+            const text = document.getElementById('resultText');
+            const symbol = document.getElementById('winnerSymbol');
+
+            if (result === 'draw') {
+                symbol.textContent = '🤝';
+                title.textContent = '무승부!';
+                text.textContent = '막상막하네요!';
+                scores.draw++;
+            } else if (result === 'red') {
+                symbol.textContent = '🔴';
+                title.textContent = '빨강 승리!';
+                text.textContent = vsAI ? '축하해요! 🎉' : '빨강 플레이어 승!';
+                scores.red++;
+            } else {
+                symbol.textContent = '🟡';
+                title.textContent = '노랑 승리!';
+                text.textContent = vsAI ? 'AI가 이겼어요!' : '노랑 플레이어 승!';
+                scores.yellow++;
+            }
+
+            updateScoreDisplay();
+            overlay.classList.add('show');
+        }
+
+        function hideOverlay() {
+            document.getElementById('overlay').classList.remove('show');
+        }
+
+        function updateScoreDisplay() {
+            redScoreEl.textContent = scores.red;
+            yellowScoreEl.textContent = scores.yellow;
+            drawScoreEl.textContent = scores.draw;
+        }
+
+        function resetGame() {
+            initBoard();
+            currentPlayer = 'red';
+            gameOver = false;
+            render();
+        }
+
+        function resetScore() {
+            scores = { red: 0, yellow: 0, draw: 0 };
+            updateScoreDisplay();
+            resetGame();
+        }
+
+        function setMode(mode) {
+            vsAI = mode === 'ai';
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+            resetGame();
+        }
+
+        // 키보드 조작
+        document.addEventListener('keydown', (e) => {
+            if (gameOver) return;
+            if (vsAI && currentPlayer === 'yellow') return;
+            
+            const key = parseInt(e.key);
+            if (key >= 1 && key <= 7) {
+                handleClick(key - 1);
+            }
+        });
+
+        // 초기화
+        initBoard();
+        render();
+    </script>
+</body>
+</html>
