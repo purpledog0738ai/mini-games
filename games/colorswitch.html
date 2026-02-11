@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Color Switch - Mini Games</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        body {
+            background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+        }
+        .score {
+            font-size: 2rem;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 20px rgba(255,255,255,0.3);
+        }
+        .best-score {
+            font-size: 1rem;
+            color: rgba(255,255,255,0.6);
+        }
+        .home-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 1rem;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+        }
+
+        #gameCanvas {
+            display: block;
+            touch-action: manipulation;
+        }
+
+        /* 시작 화면 */
+        .start-screen {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            gap: 30px;
+        }
+        .start-screen.hidden { display: none; }
+        
+        .logo {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        .logo-circle {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: conic-gradient(#e74c3c 0deg 90deg, #f1c40f 90deg 180deg, #2ecc71 180deg 270deg, #3498db 270deg 360deg);
+            animation: rotateLogo 3s linear infinite;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 40px rgba(255,255,255,0.2);
+        }
+        .logo-inner {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #1a1a2e;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .logo-ball {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #e74c3c;
+            box-shadow: 0 0 15px currentColor;
+        }
+        @keyframes rotateLogo {
+            to { transform: rotate(360deg); }
+        }
+        
+        .title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 30px rgba(255,255,255,0.3);
+        }
+        
+        .start-info {
+            color: rgba(255,255,255,0.7);
+            font-size: 1.1rem;
+            text-align: center;
+        }
+        
+        .start-btn {
+            background: linear-gradient(145deg, #e74c3c, #c0392b);
+            color: white;
+            border: none;
+            padding: 18px 50px;
+            border-radius: 30px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(231,76,60,0.4);
+            transition: transform 0.2s;
+        }
+        .start-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* 게임오버 화면 */
+        .gameover-screen {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            gap: 25px;
+        }
+        .gameover-screen.show { display: flex; }
+        
+        .gameover-title {
+            font-size: 2rem;
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .final-score {
+            font-size: 4rem;
+            color: white;
+            font-weight: bold;
+        }
+        .final-best {
+            color: #f1c40f;
+            font-size: 1.2rem;
+        }
+        
+        .retry-btn {
+            background: linear-gradient(145deg, #2ecc71, #27ae60);
+            color: white;
+            border: none;
+            padding: 16px 45px;
+            border-radius: 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(46,204,113,0.4);
+            transition: transform 0.2s;
+        }
+        .retry-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* 힌트 */
+        .hint {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.4);
+            font-size: 0.9rem;
+            text-align: center;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <div class="score" id="scoreDisplay">0</div>
+            <div class="best-score" id="bestDisplay">BEST: 0</div>
+        </div>
+        <button class="home-btn" id="homeBtn">🏠 홈</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div class="start-screen" id="startScreen">
+        <div class="logo">
+            <div class="logo-circle">
+                <div class="logo-inner">
+                    <div class="logo-ball"></div>
+                </div>
+            </div>
+            <h1 class="title">Color Switch</h1>
+        </div>
+        <p class="start-info">같은 색상만 통과할 수 있어요!<br>탭하여 점프</p>
+        <button class="start-btn" id="startBtn">🎮 게임 시작</button>
+    </div>
+
+    <div class="gameover-screen" id="gameoverScreen">
+        <div class="gameover-title">💥 게임 오버</div>
+        <div class="final-score" id="finalScore">0</div>
+        <div class="final-best" id="finalBest">🏆 BEST: 0</div>
+        <button class="retry-btn" id="retryBtn">🔄 다시 하기</button>
+        <button class="home-btn" id="homeBtn2">🏠 홈으로</button>
+    </div>
+
+    <div class="hint" id="hint">탭하여 점프!</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 반응형 캔버스 크기
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        // 색상 정의
+        const COLORS = {
+            red: '#e74c3c',
+            yellow: '#f1c40f',
+            green: '#2ecc71',
+            blue: '#3498db'
+        };
+        const COLOR_NAMES = ['red', 'yellow', 'green', 'blue'];
+
+        // 게임 상태
+        let gameState = 'start'; // start, playing, gameover
+        let score = 0;
+        let bestScore = parseInt(localStorage.getItem('colorswitch_best') || '0');
+        
+        // 공
+        let ball = {
+            x: 0,
+            y: 0,
+            radius: 15,
+            color: 'red',
+            velocity: 0,
+            gravity: 0.4,
+            jumpForce: -10
+        };
+
+        // 장애물 목록
+        let obstacles = [];
+        let stars = [];
+        
+        // 카메라 (스크롤)
+        let cameraY = 0;
+        let targetCameraY = 0;
+
+        // 장애물 종류
+        const OBSTACLE_TYPES = ['circle', 'square', 'line', 'plus'];
+
+        // 별 생성
+        function createStar(y) {
+            return {
+                x: canvas.width / 2,
+                y: y,
+                radius: 12,
+                collected: false,
+                pulse: 0
+            };
+        }
+
+        // 회전 원 장애물
+        function createCircleObstacle(y) {
+            return {
+                type: 'circle',
+                x: canvas.width / 2,
+                y: y,
+                radius: 80,
+                thickness: 18,
+                rotation: 0,
+                speed: 0.02 + Math.random() * 0.01,
+                direction: Math.random() > 0.5 ? 1 : -1
+            };
+        }
+
+        // 회전 사각형 장애물
+        function createSquareObstacle(y) {
+            return {
+                type: 'square',
+                x: canvas.width / 2,
+                y: y,
+                size: 140,
+                thickness: 18,
+                rotation: 0,
+                speed: 0.015 + Math.random() * 0.01,
+                direction: Math.random() > 0.5 ? 1 : -1
+            };
+        }
+
+        // 수평 라인 장애물
+        function createLineObstacle(y) {
+            return {
+                type: 'line',
+                x: canvas.width / 2,
+                y: y,
+                width: canvas.width * 0.8,
+                thickness: 18,
+                offset: 0,
+                speed: 2 + Math.random(),
+                direction: Math.random() > 0.5 ? 1 : -1
+            };
+        }
+
+        // 플러스 장애물
+        function createPlusObstacle(y) {
+            return {
+                type: 'plus',
+                x: canvas.width / 2,
+                y: y,
+                length: 70,
+                thickness: 18,
+                rotation: 0,
+                speed: 0.02 + Math.random() * 0.01,
+                direction: Math.random() > 0.5 ? 1 : -1
+            };
+        }
+
+        // 장애물 생성
+        function createObstacle(y) {
+            const type = OBSTACLE_TYPES[Math.floor(Math.random() * OBSTACLE_TYPES.length)];
+            switch(type) {
+                case 'circle': return createCircleObstacle(y);
+                case 'square': return createSquareObstacle(y);
+                case 'line': return createLineObstacle(y);
+                case 'plus': return createPlusObstacle(y);
+                default: return createCircleObstacle(y);
+            }
+        }
+
+        // 게임 초기화
+        function initGame() {
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height * 0.7;
+            ball.velocity = 0;
+            ball.color = COLOR_NAMES[Math.floor(Math.random() * 4)];
+            
+            score = 0;
+            cameraY = 0;
+            targetCameraY = 0;
+            
+            obstacles = [];
+            stars = [];
+            
+            // 초기 장애물 생성
+            for (let i = 1; i <= 5; i++) {
+                obstacles.push(createObstacle(ball.y - i * 250));
+                stars.push(createStar(ball.y - i * 250 + 100));
+            }
+            
+            updateUI();
+        }
+
+        // UI 업데이트
+        function updateUI() {
+            document.getElementById('scoreDisplay').textContent = score;
+            document.getElementById('bestDisplay').textContent = `BEST: ${bestScore}`;
+        }
+
+        // 점프
+        function jump() {
+            if (gameState === 'playing') {
+                ball.velocity = ball.jumpForce;
+            }
+        }
+
+        // 장애물 그리기
+        function drawObstacle(obs) {
+            const screenY = obs.y - cameraY;
+            
+            if (screenY < -200 || screenY > canvas.height + 200) return;
+            
+            ctx.save();
+            ctx.translate(obs.x, screenY);
+            
+            if (obs.type === 'circle') {
+                ctx.rotate(obs.rotation);
+                const segments = 4;
+                const anglePerSegment = Math.PI * 2 / segments;
+                
+                for (let i = 0; i < segments; i++) {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, obs.radius, i * anglePerSegment, (i + 1) * anglePerSegment);
+                    ctx.lineWidth = obs.thickness;
+                    ctx.strokeStyle = COLORS[COLOR_NAMES[i]];
+                    ctx.lineCap = 'butt';
+                    ctx.stroke();
+                }
+            } else if (obs.type === 'square') {
+                ctx.rotate(obs.rotation);
+                const half = obs.size / 2;
+                const colors = [COLORS.red, COLORS.yellow, COLORS.green, COLORS.blue];
+                
+                // 4면 그리기
+                ctx.lineWidth = obs.thickness;
+                ctx.lineCap = 'square';
+                
+                // 상단
+                ctx.beginPath();
+                ctx.moveTo(-half, -half);
+                ctx.lineTo(half, -half);
+                ctx.strokeStyle = colors[0];
+                ctx.stroke();
+                
+                // 우측
+                ctx.beginPath();
+                ctx.moveTo(half, -half);
+                ctx.lineTo(half, half);
+                ctx.strokeStyle = colors[1];
+                ctx.stroke();
+                
+                // 하단
+                ctx.beginPath();
+                ctx.moveTo(half, half);
+                ctx.lineTo(-half, half);
+                ctx.strokeStyle = colors[2];
+                ctx.stroke();
+                
+                // 좌측
+                ctx.beginPath();
+                ctx.moveTo(-half, half);
+                ctx.lineTo(-half, -half);
+                ctx.strokeStyle = colors[3];
+                ctx.stroke();
+                
+            } else if (obs.type === 'line') {
+                const segmentWidth = obs.width / 4;
+                const startX = -obs.width / 2 + obs.offset;
+                
+                for (let i = 0; i < 8; i++) { // 반복되는 패턴
+                    const x = startX + i * segmentWidth;
+                    if (x > -obs.width && x < obs.width) {
+                        ctx.beginPath();
+                        ctx.moveTo(x, 0);
+                        ctx.lineTo(x + segmentWidth, 0);
+                        ctx.lineWidth = obs.thickness;
+                        ctx.strokeStyle = COLORS[COLOR_NAMES[i % 4]];
+                        ctx.lineCap = 'butt';
+                        ctx.stroke();
+                    }
+                }
+            } else if (obs.type === 'plus') {
+                ctx.rotate(obs.rotation);
+                
+                // 가로 막대
+                ctx.lineWidth = obs.thickness;
+                ctx.lineCap = 'round';
+                
+                ctx.beginPath();
+                ctx.moveTo(-obs.length, 0);
+                ctx.lineTo(0, 0);
+                ctx.strokeStyle = COLORS.red;
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(obs.length, 0);
+                ctx.strokeStyle = COLORS.green;
+                ctx.stroke();
+                
+                // 세로 막대
+                ctx.beginPath();
+                ctx.moveTo(0, -obs.length);
+                ctx.lineTo(0, 0);
+                ctx.strokeStyle = COLORS.yellow;
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(0, obs.length);
+                ctx.strokeStyle = COLORS.blue;
+                ctx.stroke();
+            }
+            
+            ctx.restore();
+        }
+
+        // 별 그리기
+        function drawStar(star) {
+            if (star.collected) return;
+            
+            const screenY = star.y - cameraY;
+            if (screenY < -50 || screenY > canvas.height + 50) return;
+            
+            star.pulse += 0.1;
+            const scale = 1 + Math.sin(star.pulse) * 0.1;
+            
+            ctx.save();
+            ctx.translate(star.x, screenY);
+            ctx.scale(scale, scale);
+            
+            // 별 모양
+            ctx.beginPath();
+            for (let i = 0; i < 5; i++) {
+                const angle = (i * 4 * Math.PI / 5) - Math.PI / 2;
+                const x = Math.cos(angle) * star.radius;
+                const y = Math.sin(angle) * star.radius;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fillStyle = '#fff';
+            ctx.shadowColor = '#fff';
+            ctx.shadowBlur = 15;
+            ctx.fill();
+            
+            ctx.restore();
+        }
+
+        // 공 그리기
+        function drawBall() {
+            const screenY = ball.y - cameraY;
+            
+            ctx.beginPath();
+            ctx.arc(ball.x, screenY, ball.radius, 0, Math.PI * 2);
+            ctx.fillStyle = COLORS[ball.color];
+            ctx.shadowColor = COLORS[ball.color];
+            ctx.shadowBlur = 20;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+
+        // 충돌 체크
+        function checkCollision() {
+            const ballScreenY = ball.y;
+            
+            for (let obs of obstacles) {
+                const dy = ballScreenY - obs.y;
+                const dx = ball.x - obs.x;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (obs.type === 'circle') {
+                    // 원 장애물 충돌
+                    if (Math.abs(dist - obs.radius) < ball.radius + obs.thickness / 2) {
+                        // 어떤 색상 영역에 있는지 확인
+                        let angle = Math.atan2(dy, dx) - obs.rotation;
+                        while (angle < 0) angle += Math.PI * 2;
+                        while (angle >= Math.PI * 2) angle -= Math.PI * 2;
+                        
+                        const segment = Math.floor(angle / (Math.PI * 2) * 4);
+                        const hitColor = COLOR_NAMES[segment];
+                        
+                        if (hitColor !== ball.color) {
+                            return true;
+                        }
+                    }
+                } else if (obs.type === 'square') {
+                    // 사각형 장애물 충돌
+                    const half = obs.size / 2;
+                    const cosR = Math.cos(-obs.rotation);
+                    const sinR = Math.sin(-obs.rotation);
+                    
+                    // 공 위치를 회전된 좌표계로 변환
+                    const localX = dx * cosR - dy * sinR;
+                    const localY = dx * sinR + dy * cosR;
+                    
+                    // 각 변과의 거리 체크
+                    const hitDist = ball.radius + obs.thickness / 2;
+                    
+                    // 상단
+                    if (Math.abs(localY + half) < hitDist && Math.abs(localX) < half + hitDist) {
+                        if (ball.color !== 'red') return true;
+                    }
+                    // 우측
+                    if (Math.abs(localX - half) < hitDist && Math.abs(localY) < half + hitDist) {
+                        if (ball.color !== 'yellow') return true;
+                    }
+                    // 하단
+                    if (Math.abs(localY - half) < hitDist && Math.abs(localX) < half + hitDist) {
+                        if (ball.color !== 'green') return true;
+                    }
+                    // 좌측
+                    if (Math.abs(localX + half) < hitDist && Math.abs(localY) < half + hitDist) {
+                        if (ball.color !== 'blue') return true;
+                    }
+                } else if (obs.type === 'line') {
+                    // 라인 장애물 충돌
+                    if (Math.abs(dy) < ball.radius + obs.thickness / 2) {
+                        // 어떤 색상 위에 있는지
+                        const relativeX = ball.x - obs.x + obs.width / 2 - obs.offset;
+                        const segmentWidth = obs.width / 4;
+                        let segment = Math.floor(((relativeX % obs.width) + obs.width) % obs.width / segmentWidth);
+                        segment = ((segment % 4) + 4) % 4;
+                        const hitColor = COLOR_NAMES[segment];
+                        
+                        if (hitColor !== ball.color) {
+                            return true;
+                        }
+                    }
+                } else if (obs.type === 'plus') {
+                    // 플러스 장애물 충돌
+                    const cosR = Math.cos(-obs.rotation);
+                    const sinR = Math.sin(-obs.rotation);
+                    const localX = dx * cosR - dy * sinR;
+                    const localY = dx * sinR + dy * cosR;
+                    
+                    const hitDist = ball.radius + obs.thickness / 2;
+                    
+                    // 가로 막대
+                    if (Math.abs(localY) < hitDist && Math.abs(localX) < obs.length + hitDist) {
+                        if (localX < 0 && ball.color !== 'red') return true;
+                        if (localX >= 0 && ball.color !== 'green') return true;
+                    }
+                    // 세로 막대
+                    if (Math.abs(localX) < hitDist && Math.abs(localY) < obs.length + hitDist) {
+                        if (localY < 0 && ball.color !== 'yellow') return true;
+                        if (localY >= 0 && ball.color !== 'blue') return true;
+                    }
+                }
+            }
+            
+            return false;
+        }
+
+        // 별 수집 체크
+        function checkStarCollision() {
+            for (let star of stars) {
+                if (star.collected) continue;
+                
+                const dx = ball.x - star.x;
+                const dy = ball.y - star.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist < ball.radius + star.radius) {
+                    star.collected = true;
+                    score++;
+                    // 색상 변경
+                    const availableColors = COLOR_NAMES.filter(c => c !== ball.color);
+                    ball.color = availableColors[Math.floor(Math.random() * availableColors.length)];
+                    updateUI();
+                }
+            }
+        }
+
+        // 게임 오버
+        function gameOver() {
+            gameState = 'gameover';
+            
+            if (score > bestScore) {
+                bestScore = score;
+                localStorage.setItem('colorswitch_best', bestScore.toString());
+            }
+            
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('finalBest').textContent = `🏆 BEST: ${bestScore}`;
+            document.getElementById('gameoverScreen').classList.add('show');
+        }
+
+        // 게임 업데이트
+        function update() {
+            if (gameState !== 'playing') return;
+            
+            // 중력 적용
+            ball.velocity += ball.gravity;
+            ball.y += ball.velocity;
+            
+            // 카메라 따라가기
+            const targetY = ball.y - canvas.height * 0.6;
+            if (targetY < cameraY) {
+                cameraY += (targetY - cameraY) * 0.1;
+            }
+            
+            // 화면 아래로 떨어지면 게임오버
+            if (ball.y - cameraY > canvas.height + 50) {
+                gameOver();
+                return;
+            }
+            
+            // 장애물 업데이트
+            for (let obs of obstacles) {
+                if (obs.type === 'circle' || obs.type === 'square' || obs.type === 'plus') {
+                    obs.rotation += obs.speed * obs.direction;
+                } else if (obs.type === 'line') {
+                    obs.offset += obs.speed * obs.direction;
+                    if (Math.abs(obs.offset) > obs.width / 2) {
+                        obs.direction *= -1;
+                    }
+                }
+            }
+            
+            // 충돌 체크
+            if (checkCollision()) {
+                gameOver();
+                return;
+            }
+            
+            // 별 수집
+            checkStarCollision();
+            
+            // 새 장애물 생성
+            const topObstacle = obstacles[obstacles.length - 1];
+            if (topObstacle && ball.y < topObstacle.y + 300) {
+                const newY = topObstacle.y - 250;
+                obstacles.push(createObstacle(newY));
+                stars.push(createStar(newY + 100));
+            }
+            
+            // 지나간 장애물 제거
+            obstacles = obstacles.filter(o => o.y - cameraY < canvas.height + 300);
+            stars = stars.filter(s => s.y - cameraY < canvas.height + 300);
+        }
+
+        // 렌더링
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 배경 그라데이션
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#1a1a2e');
+            gradient.addColorStop(1, '#0f0f1a');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 장애물 그리기
+            for (let obs of obstacles) {
+                drawObstacle(obs);
+            }
+            
+            // 별 그리기
+            for (let star of stars) {
+                drawStar(star);
+            }
+            
+            // 공 그리기
+            drawBall();
+        }
+
+        // 게임 루프
+        function gameLoop() {
+            update();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 이벤트
+        document.getElementById('startBtn').addEventListener('click', () => {
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('hint').style.display = 'block';
+            gameState = 'playing';
+            initGame();
+        });
+
+        document.getElementById('retryBtn').addEventListener('click', () => {
+            document.getElementById('gameoverScreen').classList.remove('show');
+            gameState = 'playing';
+            initGame();
+        });
+
+        document.getElementById('homeBtn').addEventListener('click', goHome);
+        document.getElementById('homeBtn2').addEventListener('click', goHome);
+
+        function goHome() {
+            if (window.parent !== window) {
+                window.parent.postMessage({ type: 'closeGame' }, '*');
+            } else {
+                window.location.href = '../index.html';
+            }
+        }
+
+        // 터치/클릭으로 점프
+        canvas.addEventListener('click', jump);
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            jump();
+        });
+
+        // 스페이스바로 점프
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (gameState === 'start') {
+                    document.getElementById('startBtn').click();
+                } else {
+                    jump();
+                }
+            }
+        });
+
+        // 초기화
+        document.getElementById('bestDisplay').textContent = `BEST: ${bestScore}`;
+        document.getElementById('hint').style.display = 'none';
+        gameLoop();
+    </script>
+</body>
+</html>

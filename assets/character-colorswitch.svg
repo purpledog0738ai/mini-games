@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- 회전하는 색상 링 -->
+  <circle cx="50" cy="50" r="42" fill="none" stroke="#e74c3c" stroke-width="8" stroke-dasharray="66 198" stroke-dashoffset="0"/>
+  <circle cx="50" cy="50" r="42" fill="none" stroke="#f1c40f" stroke-width="8" stroke-dasharray="66 198" stroke-dashoffset="-66"/>
+  <circle cx="50" cy="50" r="42" fill="none" stroke="#2ecc71" stroke-width="8" stroke-dasharray="66 198" stroke-dashoffset="-132"/>
+  <circle cx="50" cy="50" r="42" fill="none" stroke="#3498db" stroke-width="8" stroke-dasharray="66 198" stroke-dashoffset="-198"/>
+  
+  <!-- 내부 배경 -->
+  <circle cx="50" cy="50" r="30" fill="#1a1a2e"/>
+  
+  <!-- 귀여운 공 캐릭터 -->
+  <circle cx="50" cy="50" r="16" fill="#e74c3c">
+    <animate attributeName="fill" values="#e74c3c;#f1c40f;#2ecc71;#3498db;#e74c3c" dur="4s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- 눈 (왼쪽) -->
+  <ellipse cx="45" cy="47" rx="4" ry="5" fill="white"/>
+  <circle cx="46" cy="47" r="2" fill="#1a1a2e"/>
+  <circle cx="47" cy="46" r="0.8" fill="white"/>
+  
+  <!-- 눈 (오른쪽) -->
+  <ellipse cx="55" cy="47" rx="4" ry="5" fill="white"/>
+  <circle cx="56" cy="47" r="2" fill="#1a1a2e"/>
+  <circle cx="57" cy="46" r="0.8" fill="white"/>
+  
+  <!-- 볼터치 -->
+  <ellipse cx="40" cy="53" rx="3" ry="1.5" fill="rgba(255,150,150,0.5)"/>
+  <ellipse cx="60" cy="53" rx="3" ry="1.5" fill="rgba(255,150,150,0.5)"/>
+  
+  <!-- 입 (웃는 표정) -->
+  <path d="M46 54 Q50 58 54 54" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+  
+  <!-- 별 하이라이트 -->
+  <polygon points="78,20 80,26 86,26 81,30 83,36 78,32 73,36 75,30 70,26 76,26" fill="#fff" opacity="0.8">
+    <animate attributeName="opacity" values="0.8;0.4;0.8" dur="1.5s" repeatCount="indefinite"/>
+  </polygon>
+  
+  <!-- 작은 반짝임 -->
+  <circle cx="25" cy="70" r="2" fill="white" opacity="0.5">
+    <animate attributeName="opacity" values="0.5;0.2;0.5" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="75" cy="75" r="1.5" fill="white" opacity="0.4"/>
+</svg>
