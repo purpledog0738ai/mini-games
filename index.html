@@ -481,11 +481,19 @@
             gameOverlay.classList.add('active');
             document.body.style.overflow = 'hidden';
 
-            // PC면 전체화면 요청
-            if (isPC() && gameOverlay.requestFullscreen) {
-                gameOverlay.requestFullscreen().catch(err => {
-                    console.log('전체화면 전환 실패:', err);
-                });
+            // PC면 전체화면 요청 (브라우저 호환성)
+            if (isPC()) {
+                const el = gameOverlay;
+                const requestFS = el.requestFullscreen 
+                    || el.webkitRequestFullscreen 
+                    || el.mozRequestFullScreen 
+                    || el.msRequestFullscreen;
+                
+                if (requestFS) {
+                    requestFS.call(el).catch(err => {
+                        console.log('전체화면 전환 실패:', err);
+                    });
+                }
             }
         }
 
@@ -495,9 +503,18 @@
             gameFrame.src = 'about:blank';
             document.body.style.overflow = '';
 
-            // 전체화면 해제
-            if (document.fullscreenElement) {
-                document.exitFullscreen();
+            // 전체화면 해제 (브라우저 호환성)
+            const fsElement = document.fullscreenElement 
+                || document.webkitFullscreenElement 
+                || document.mozFullScreenElement 
+                || document.msFullscreenElement;
+            
+            if (fsElement) {
+                const exitFS = document.exitFullscreen 
+                    || document.webkitExitFullscreen 
+                    || document.mozCancelFullScreen 
+                    || document.msExitFullscreen;
+                if (exitFS) exitFS.call(document);
             }
         }
 
@@ -510,11 +527,18 @@
             }
         });
 
-        // 전체화면 해제 시 게임도 닫기
-        document.addEventListener('fullscreenchange', () => {
-            if (!document.fullscreenElement && gameOverlay.classList.contains('active')) {
-                closeGame();
-            }
+        // 전체화면 해제 시 게임도 닫기 (브라우저 호환성)
+        ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(event => {
+            document.addEventListener(event, () => {
+                const fsElement = document.fullscreenElement 
+                    || document.webkitFullscreenElement 
+                    || document.mozFullScreenElement 
+                    || document.msFullscreenElement;
+                
+                if (!fsElement && gameOverlay.classList.contains('active')) {
+                    closeGame();
+                }
+            });
         });
 
         // 사운드 토글
