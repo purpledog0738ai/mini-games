@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Breakout - Mini Games</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            font-family: 'Segoe UI', sans-serif;
+            touch-action: none;
+            user-select: none;
+        }
+        #gameCanvas {
+            background: #0a0a1a;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <script src="../framework/game-wrapper.js"></script>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // 반응형 캔버스
+        function resizeCanvas() {
+            const maxW = Math.min(window.innerWidth * 0.95, 420);
+            const maxH = Math.min(window.innerHeight * 0.85, 600);
+            canvas.width = maxW;
+            canvas.height = maxH;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // 게임 상태
+        let paddle, ball, bricks, score, lives, gameRunning;
+        const BRICK_ROWS = 5;
+        const BRICK_COLS = 8;
+        const BRICK_COLORS = ['#e74c3c', '#e67e22', '#f1c40f', '#2ecc71', '#3498db'];
+
+        function initGame() {
+            const paddleW = canvas.width * 0.22;
+            paddle = { x: canvas.width / 2 - paddleW / 2, y: canvas.height - 40, w: paddleW, h: 12 };
+            
+            ball = {
+                x: canvas.width / 2,
+                y: canvas.height - 60,
+                r: 8,
+                dx: 4 * (Math.random() > 0.5 ? 1 : -1),
+                dy: -4
+            };
+            
+            // 벽돌 생성
+            bricks = [];
+            const brickW = (canvas.width - 40) / BRICK_COLS;
+            const brickH = 22;
+            const brickPad = 4;
+            const brickTop = 60;
+            const brickLeft = 20;
+            
+            for (let r = 0; r < BRICK_ROWS; r++) {
+                for (let c = 0; c < BRICK_COLS; c++) {
+                    bricks.push({
+                        x: brickLeft + c * brickW + brickPad / 2,
+                        y: brickTop + r * (brickH + brickPad),
+                        w: brickW - brickPad,
+                        h: brickH,
+                        color: BRICK_COLORS[r],
+                        alive: true
+                    });
+                }
+            }
+            
+            score = 0;
+            lives = 3;
+            gameRunning = false;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 점수 & 생명
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 18px Segoe UI';
+            ctx.textAlign = 'left';
+            ctx.fillText(`점수: ${score}`, 15, 30);
+            ctx.textAlign = 'right';
+            ctx.fillText('❤️'.repeat(lives), canvas.width - 15, 30);
+            
+            // 벽돌
+            bricks.forEach(b => {
+                if (!b.alive) return;
+                ctx.fillStyle = b.color;
+                ctx.beginPath();
+                ctx.roundRect(b.x, b.y, b.w, b.h, 4);
+                ctx.fill();
+                
+                // 광택
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.fillRect(b.x + 3, b.y + 3, b.w - 6, 4);
+            });
+            
+            // 패들
+            const grad = ctx.createLinearGradient(paddle.x, paddle.y, paddle.x, paddle.y + paddle.h);
+            grad.addColorStop(0, '#00d4ff');
+            grad.addColorStop(1, '#0099cc');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.roundRect(paddle.x, paddle.y, paddle.w, paddle.h, 6);
+            ctx.fill();
+            
+            // 공
+            ctx.fillStyle = '#fff';
+            ctx.shadowColor = '#00d4ff';
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+
+        function update() {
+            if (!gameRunning) return;
+            
+            // 공 이동
+            ball.x += ball.dx;
+            ball.y += ball.dy;
+            
+            // 벽 충돌
+            if (ball.x - ball.r < 0 || ball.x + ball.r > canvas.width) {
+                ball.dx = -ball.dx;
+            }
+            if (ball.y - ball.r < 0) {
+                ball.dy = -ball.dy;
+            }
+            
+            // 바닥 (생명 감소)
+            if (ball.y + ball.r > canvas.height) {
+                lives--;
+                if (lives <= 0) {
+                    gameRunning = false;
+                    gameOver(score);
+                    return;
+                }
+                // 리셋
+                ball.x = canvas.width / 2;
+                ball.y = canvas.height - 60;
+                ball.dx = 4 * (Math.random() > 0.5 ? 1 : -1);
+                ball.dy = -4;
+            }
+            
+            // 패들 충돌
+            if (ball.y + ball.r > paddle.y && 
+                ball.y - ball.r < paddle.y + paddle.h &&
+                ball.x > paddle.x && 
+                ball.x < paddle.x + paddle.w) {
+                ball.dy = -Math.abs(ball.dy);
+                // 패들 위치에 따라 각도 조절
+                const hitPos = (ball.x - paddle.x) / paddle.w;
+                ball.dx = 8 * (hitPos - 0.5);
+            }
+            
+            // 벽돌 충돌
+            bricks.forEach(b => {
+                if (!b.alive) return;
+                if (ball.x + ball.r > b.x && ball.x - ball.r < b.x + b.w &&
+                    ball.y + ball.r > b.y && ball.y - ball.r < b.y + b.h) {
+                    b.alive = false;
+                    ball.dy = -ball.dy;
+                    score += 10;
+                    
+                    // 승리 체크
+                    if (bricks.every(brick => !brick.alive)) {
+                        gameRunning = false;
+                        gameOver(score);
+                    }
+                }
+            });
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 입력 처리
+        function movePaddle(clientX) {
+            const rect = canvas.getBoundingClientRect();
+            const x = clientX - rect.left;
+            paddle.x = Math.max(0, Math.min(canvas.width - paddle.w, x - paddle.w / 2));
+        }
+
+        canvas.addEventListener('mousemove', e => movePaddle(e.clientX));
+        canvas.addEventListener('touchmove', e => {
+            e.preventDefault();
+            movePaddle(e.touches[0].clientX);
+        }, { passive: false });
+
+        // 게임 래퍼 연동
+        window.GAME = {
+            name: 'Breakout',
+            emoji: '🧱',
+            image: '../assets/character-breakout.svg',
+            start: () => { gameRunning = true; },
+            reset: initGame
+        };
+
+        initGame();
+        gameLoop();
+    </script>
+</body>
+</html>

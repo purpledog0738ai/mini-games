@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- 패들 몸통 -->
+  <rect x="20" y="55" width="60" height="15" rx="7" fill="#00d4ff"/>
+  <rect x="23" y="58" width="54" height="5" fill="rgba(255,255,255,0.3)"/>
+  
+  <!-- 얼굴 -->
+  <circle cx="35" cy="62" r="4" fill="white"/>
+  <circle cx="65" cy="62" r="4" fill="white"/>
+  <circle cx="36" cy="63" r="2" fill="#1a1a2e"/>
+  <circle cx="66" cy="63" r="2" fill="#1a1a2e"/>
+  
+  <!-- 웃는 입 -->
+  <path d="M 42 67 Q 50 72 58 67" stroke="#1a1a2e" stroke-width="2" fill="none" stroke-linecap="round"/>
+  
+  <!-- 공 -->
+  <circle cx="50" cy="30" r="12" fill="white"/>
+  <circle cx="47" cy="27" r="4" fill="rgba(0,212,255,0.5)"/>
+  
+  <!-- 공 궤적 -->
+  <path d="M 50 42 L 50 50" stroke="rgba(255,255,255,0.4)" stroke-width="2" stroke-dasharray="3"/>
+  
+  <!-- 벽돌들 -->
+  <rect x="10" y="8" width="18" height="8" rx="2" fill="#e74c3c"/>
+  <rect x="30" y="8" width="18" height="8" rx="2" fill="#e67e22"/>
+  <rect x="50" y="8" width="18" height="8" rx="2" fill="#f1c40f"/>
+  <rect x="70" y="8" width="18" height="8" rx="2" fill="#2ecc71"/>
+  
+  <!-- 반짝임 -->
+  <circle cx="25" cy="62" r="1.5" fill="rgba(255,255,255,0.6)"/>
+</svg>
