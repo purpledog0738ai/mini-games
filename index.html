@@ -360,41 +360,11 @@
             { id: 'minesweeper', title: 'Minesweeper', emoji: '💣', image: 'assets/character-minesweeper.svg', desc: '지뢰를 피해 모든 칸을 열어요!', controls: '탭: 열기 | 길게: 깃발', url: 'games/minesweeper.html', gradient: 'linear-gradient(135deg, #34495e, #2c3e50)', plays: 0, likes: 0 }
         ];
 
-        // Supabase에서 게임 목록 가져오기 (fallback 포함)
+        // 게임 목록 가져오기 (Supabase 비활성화, fallback 사용)
         async function fetchGames() {
-            try {
-                const response = await fetch(
-                    `${SUPABASE_URL}/rest/v1/games?select=*&active=eq.true&order=sort_order`,
-                    {
-                        headers: {
-                            'apikey': SUPABASE_ANON_KEY,
-                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                        }
-                    }
-                );
-                const data = await response.json();
-                if (data && data.length > 0) {
-                    GAMES = data.map(g => ({
-                        id: g.slug,
-                        title: g.title,
-                        emoji: g.emoji,
-                        image: g.image,
-                        desc: g.description,
-                        controls: g.controls,
-                        url: g.url,
-                        gradient: g.gradient,
-                        plays: g.plays,
-                        likes: g.likes
-                    }));
-                } else {
-                    GAMES = FALLBACK_GAMES;
-                }
-                return GAMES;
-            } catch (error) {
-                console.error('Supabase 로딩 실패, fallback 사용:', error);
-                GAMES = FALLBACK_GAMES;
-                return GAMES;
-            }
+            // Supabase 테이블 생성 전까지 fallback 사용
+            GAMES = FALLBACK_GAMES;
+            return GAMES;
         }
 
         // 슬라이드 생성
