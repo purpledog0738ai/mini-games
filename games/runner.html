@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1a1a2e">
+    <title>🏃 Endless Runner</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background: #1a1a2e;
+            touch-action: none;
+            user-select: none;
+        }
+        body { display: flex; align-items: center; justify-content: center; }
+        canvas { border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+    </style>
+</head>
+<body>
+    <canvas id="game"></canvas>
+    <script src="../framework/game-wrapper.js"></script>
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+
+        const isPC = window.innerWidth > 768;
+        const BASE_WIDTH = isPC ? 600 : 400;
+        const BASE_HEIGHT = isPC ? 400 : 300;
+        let scale = 1, dpr = 1, gameRunning = false;
+
+        function resizeCanvas() {
+            dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const wW = window.innerWidth, wH = window.innerHeight;
+            const ratio = BASE_WIDTH / BASE_HEIGHT;
+            let dW, dH;
+            if (wW/wH > ratio) { dH = Math.min(wH*0.9, BASE_HEIGHT*2.5); dW = dH*ratio; }
+            else { dW = Math.min(wW*0.95, BASE_WIDTH*2.5); dH = dW/ratio; }
+            canvas.style.width = dW+'px'; canvas.style.height = dH+'px';
+            canvas.width = dW*dpr; canvas.height = dH*dpr;
+            scale = (dW/BASE_WIDTH)*dpr;
+            ctx.setTransform(scale,0,0,scale,0,0);
+        }
+
+        // 게임 변수
+        let score = 0, bestScore = localStorage.getItem('runnerBest') || 0;
+        let coins = 0;
+        let frameCount = 0;
+        let gameSpeed = 5;
+        let groundY = BASE_HEIGHT - 60;
+        let distance = 0;
+
+        // 플레이어
+        const player = {
+            x: 80,
+            y: groundY,
+            w: 30,
+            h: 45,
+            vy: 0,
+            jumping: false,
+            doubleJump: false,
+            runFrame: 0,
+            invincible: 0
+        };
+
+        const GRAVITY = 0.55;
+        const JUMP_FORCE = -13;
+
+        // 플랫폼
+        let platforms = [];
+        let platformTimer = 0;
+
+        // 장애물
+        let obstacles = [];
+        let obstacleTimer = 0;
+
+        // 코인
+        let coinItems = [];
+        let coinTimer = 0;
+
+        // 파워업
+        let powerups = [];
+        let powerupTimer = 0;
+        let magnetActive = 0;
+        let shieldActive = 0;
+
+        // 배경 레이어
+        let bgLayers = [
+            { offset: 0, speed: 0.2, color: '#16213e' },
+            { offset: 0, speed: 0.5, color: '#1a1a2e' },
+            { offset: 0, speed: 1, color: '#0f0f23' }
+        ];
+
+        // 파티클
+        let particles = [];
+
+        // 색상
+        const COLORS = {
+            player: '#00d4ff',
+            playerGlow: 'rgba(0, 212, 255, 0.3)',
+            platform: '#3d5a80',
+            platformTop: '#98c1d9',
+            obstacle: '#e63946',
+            coin: '#ffd700',
+            magnet: '#ff6b9d',
+            shield: '#00ff88',
+            bg1: '#16213e',
+            bg2: '#1a1a2e',
+            ground: '#293241'
+        };
+
+        // 플레이어 그리기
+        function drawPlayer() {
+            const { x, y, w, h, runFrame, invincible } = player;
+            
+            if (invincible > 0 && Math.floor(frameCount / 3) % 2 === 0) return;
+
+            ctx.save();
+            
+            // 글로우 효과
+            if (shieldActive > 0) {
+                ctx.beginPath();
+                ctx.arc(x + w/2, y - h/2, 35, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0, 255, 136, 0.2)';
+                ctx.fill();
+                ctx.strokeStyle = COLORS.shield;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            // 몸통
+            const bodyColor = shieldActive > 0 ? COLORS.shield : COLORS.player;
+            ctx.fillStyle = bodyColor;
+            
+            // 머리
+            ctx.beginPath();
+            ctx.arc(x + w/2, y - h + 12, 12, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 헬멧 바이저
+            ctx.fillStyle = '#1a1a2e';
+            ctx.beginPath();
+            ctx.ellipse(x + w/2 + 3, y - h + 10, 6, 4, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 몸통
+            ctx.fillStyle = bodyColor;
+            ctx.fillRect(x + 5, y - h + 22, 20, 18);
+
+            // 다리 애니메이션
+            const legAngle = Math.sin(runFrame * 0.5) * 0.8;
+            
+            ctx.save();
+            ctx.translate(x + 10, y - 15);
+            ctx.rotate(legAngle);
+            ctx.fillRect(-4, 0, 8, 18);
+            ctx.restore();
+
+            ctx.save();
+            ctx.translate(x + 20, y - 15);
+            ctx.rotate(-legAngle);
+            ctx.fillRect(-4, 0, 8, 18);
+            ctx.restore();
+
+            // 팔 애니메이션
+            ctx.save();
+            ctx.translate(x + 5, y - h + 25);
+            ctx.rotate(-legAngle * 0.7);
+            ctx.fillRect(-3, 0, 6, 12);
+            ctx.restore();
+
+            ctx.save();
+            ctx.translate(x + 25, y - h + 25);
+            ctx.rotate(legAngle * 0.7);
+            ctx.fillRect(-3, 0, 6, 12);
+            ctx.restore();
+
+            // 잔상 효과 (달리는 중)
+            if (gameRunning && !player.jumping) {
+                ctx.globalAlpha = 0.3;
+                ctx.fillStyle = bodyColor;
+                ctx.beginPath();
+                ctx.arc(x + w/2 - 15, y - h + 12, 8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 0.15;
+                ctx.beginPath();
+                ctx.arc(x + w/2 - 30, y - h + 12, 6, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+
+        // 플랫폼 그리기
+        function drawPlatforms() {
+            platforms.forEach(p => {
+                // 플랫폼 몸체
+                ctx.fillStyle = COLORS.platform;
+                ctx.fillRect(p.x, p.y, p.w, p.h);
+                
+                // 상단 하이라이트
+                ctx.fillStyle = COLORS.platformTop;
+                ctx.fillRect(p.x, p.y, p.w, 4);
+
+                // 패턴
+                ctx.fillStyle = 'rgba(255,255,255,0.1)';
+                for (let i = 0; i < p.w; i += 20) {
+                    ctx.fillRect(p.x + i + 5, p.y + 8, 10, 2);
+                }
+            });
+        }
+
+        // 장애물 그리기
+        function drawObstacles() {
+            obstacles.forEach(o => {
+                ctx.save();
+                ctx.fillStyle = COLORS.obstacle;
+                
+                if (o.type === 'spike') {
+                    // 스파이크
+                    ctx.beginPath();
+                    ctx.moveTo(o.x, o.y + o.h);
+                    ctx.lineTo(o.x + o.w/2, o.y);
+                    ctx.lineTo(o.x + o.w, o.y + o.h);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // 글로우
+                    ctx.shadowColor = COLORS.obstacle;
+                    ctx.shadowBlur = 10;
+                    ctx.fill();
+                } else if (o.type === 'laser') {
+                    // 레이저 빔
+                    const pulse = Math.sin(frameCount * 0.3) * 0.3 + 0.7;
+                    ctx.globalAlpha = pulse;
+                    ctx.fillRect(o.x, o.y, o.w, o.h);
+                    ctx.shadowColor = COLORS.obstacle;
+                    ctx.shadowBlur = 15;
+                    ctx.fillRect(o.x, o.y, o.w, o.h);
+                    
+                    // 레이저 발사대
+                    ctx.globalAlpha = 1;
+                    ctx.fillStyle = '#333';
+                    ctx.fillRect(o.x - 5, o.y - 5, 10, o.h + 10);
+                } else if (o.type === 'box') {
+                    // 박스
+                    ctx.fillRect(o.x, o.y, o.w, o.h);
+                    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                    ctx.fillRect(o.x + 5, o.y + 5, o.w - 10, o.h - 10);
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(o.x + o.w/2 - 3, o.y + o.h/2 - 3, 6, 6);
+                }
+                
+                ctx.restore();
+            });
+        }
+
+        // 코인 그리기
+        function drawCoins() {
+            coinItems.forEach(c => {
+                ctx.save();
+                const bounce = Math.sin(frameCount * 0.15 + c.x * 0.1) * 3;
+                const scale = 0.8 + Math.sin(frameCount * 0.1) * 0.1;
+                
+                ctx.translate(c.x + c.r, c.y + c.r + bounce);
+                ctx.scale(scale, 1);
+                
+                // 코인 본체
+                ctx.beginPath();
+                ctx.arc(0, 0, c.r, 0, Math.PI * 2);
+                ctx.fillStyle = COLORS.coin;
+                ctx.shadowColor = COLORS.coin;
+                ctx.shadowBlur = 10;
+                ctx.fill();
+                
+                // 코인 하이라이트
+                ctx.beginPath();
+                ctx.arc(-2, -2, c.r * 0.5, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                ctx.fill();
+                
+                // 달러 심볼
+                ctx.fillStyle = '#b8860b';
+                ctx.font = 'bold 10px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('$', 0, 1);
+                
+                ctx.restore();
+            });
+        }
+
+        // 파워업 그리기
+        function drawPowerups() {
+            powerups.forEach(p => {
+                ctx.save();
+                const float = Math.sin(frameCount * 0.1) * 5;
+                
+                ctx.translate(p.x + 15, p.y + 15 + float);
+                ctx.rotate(frameCount * 0.05);
+                
+                if (p.type === 'magnet') {
+                    ctx.fillStyle = COLORS.magnet;
+                    // 자석 모양
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 12, Math.PI, 0, false);
+                    ctx.lineTo(12, 8);
+                    ctx.lineTo(6, 8);
+                    ctx.lineTo(6, 0);
+                    ctx.lineTo(-6, 0);
+                    ctx.lineTo(-6, 8);
+                    ctx.lineTo(-12, 8);
+                    ctx.closePath();
+                    ctx.fill();
+                } else if (p.type === 'shield') {
+                    ctx.fillStyle = COLORS.shield;
+                    // 방패 모양
+                    ctx.beginPath();
+                    ctx.moveTo(0, -12);
+                    ctx.lineTo(10, -6);
+                    ctx.lineTo(10, 4);
+                    ctx.lineTo(0, 12);
+                    ctx.lineTo(-10, 4);
+                    ctx.lineTo(-10, -6);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+            });
+        }
+
+        // 배경 그리기
+        function drawBackground() {
+            // 그라데이션 하늘
+            const gradient = ctx.createLinearGradient(0, 0, 0, BASE_HEIGHT);
+            gradient.addColorStop(0, '#0f0f23');
+            gradient.addColorStop(0.5, '#1a1a2e');
+            gradient.addColorStop(1, '#16213e');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+
+            // 별
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            for (let i = 0; i < 30; i++) {
+                const x = (i * 47 + frameCount * 0.1) % BASE_WIDTH;
+                const y = (i * 23) % (groundY - 50);
+                const size = (i % 3) + 1;
+                const twinkle = Math.sin(frameCount * 0.1 + i) * 0.5 + 0.5;
+                ctx.globalAlpha = twinkle * 0.8;
+                ctx.fillRect(x, y, size, size);
+            }
+            ctx.globalAlpha = 1;
+
+            // 원경 빌딩
+            ctx.fillStyle = '#0a0a15';
+            for (let i = 0; i < 8; i++) {
+                const x = ((i * 80 - bgLayers[0].offset * 0.3) % (BASE_WIDTH + 100)) - 50;
+                const h = 60 + (i * 17) % 80;
+                ctx.fillRect(x, groundY - h + 20, 50, h + 40);
+                // 창문
+                ctx.fillStyle = 'rgba(255,200,100,0.3)';
+                for (let j = 0; j < 4; j++) {
+                    for (let k = 0; k < Math.floor(h / 20); k++) {
+                        if (Math.random() > 0.3) {
+                            ctx.fillRect(x + 8 + j * 10, groundY - h + 30 + k * 18, 6, 10);
+                        }
+                    }
+                }
+                ctx.fillStyle = '#0a0a15';
+            }
+
+            // 땅
+            ctx.fillStyle = COLORS.ground;
+            ctx.fillRect(0, groundY, BASE_WIDTH, BASE_HEIGHT - groundY);
+            
+            // 땅 라인
+            ctx.fillStyle = '#3d5a80';
+            ctx.fillRect(0, groundY, BASE_WIDTH, 3);
+            
+            // 달리는 라인
+            ctx.fillStyle = 'rgba(255,255,255,0.1)';
+            const lineOffset = (frameCount * gameSpeed) % 40;
+            for (let i = -1; i < BASE_WIDTH / 40 + 1; i++) {
+                ctx.fillRect(i * 40 - lineOffset, groundY + 25, 25, 3);
+            }
+        }
+
+        // 파티클 그리기
+        function drawParticles() {
+            particles.forEach(p => {
+                ctx.save();
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+        }
+
+        // UI 그리기
+        function drawUI() {
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'left';
+            
+            // 거리
+            ctx.fillText(`${Math.floor(distance)}m`, 15, 30);
+            
+            // 코인
+            ctx.fillStyle = COLORS.coin;
+            ctx.fillText(`💰 ${coins}`, 15, 55);
+            
+            // 최고 기록
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.font = '14px Arial';
+            ctx.fillText(`BEST: ${bestScore}m`, 15, 75);
+
+            // 파워업 상태
+            if (magnetActive > 0) {
+                ctx.fillStyle = COLORS.magnet;
+                ctx.fillRect(BASE_WIDTH - 110, 15, magnetActive / 5, 8);
+                ctx.strokeStyle = '#fff';
+                ctx.strokeRect(BASE_WIDTH - 110, 15, 100, 8);
+            }
+            if (shieldActive > 0) {
+                ctx.fillStyle = COLORS.shield;
+                ctx.fillRect(BASE_WIDTH - 110, 28, shieldActive / 5, 8);
+                ctx.strokeStyle = '#fff';
+                ctx.strokeRect(BASE_WIDTH - 110, 28, 100, 8);
+            }
+        }
+
+        // 파티클 생성
+        function spawnParticle(x, y, color, count = 5) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x, y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
+                    size: Math.random() * 4 + 2,
+                    color,
+                    life: 1
+                });
+            }
+        }
+
+        // 플랫폼 생성
+        function spawnPlatform() {
+            const y = groundY - 60 - Math.random() * 80;
+            platforms.push({
+                x: BASE_WIDTH + 20,
+                y,
+                w: 80 + Math.random() * 60,
+                h: 15
+            });
+        }
+
+        // 장애물 생성
+        function spawnObstacle() {
+            const types = ['spike', 'box'];
+            if (distance > 200) types.push('laser');
+            
+            const type = types[Math.floor(Math.random() * types.length)];
+            let obs;
+
+            if (type === 'spike') {
+                obs = { type, x: BASE_WIDTH + 20, y: groundY - 25, w: 25, h: 25 };
+            } else if (type === 'box') {
+                obs = { type, x: BASE_WIDTH + 20, y: groundY - 35, w: 30, h: 35 };
+            } else if (type === 'laser') {
+                const h = 60 + Math.random() * 40;
+                obs = { type, x: BASE_WIDTH + 20, y: groundY - h, w: 8, h };
+            }
+
+            obstacles.push(obs);
+        }
+
+        // 코인 생성
+        function spawnCoins() {
+            const y = groundY - 50 - Math.random() * 80;
+            const count = 3 + Math.floor(Math.random() * 4);
+            for (let i = 0; i < count; i++) {
+                coinItems.push({
+                    x: BASE_WIDTH + 20 + i * 30,
+                    y: y + Math.sin(i * 0.5) * 20,
+                    r: 10
+                });
+            }
+        }
+
+        // 파워업 생성
+        function spawnPowerup() {
+            const types = ['magnet', 'shield'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            powerups.push({
+                type,
+                x: BASE_WIDTH + 20,
+                y: groundY - 80 - Math.random() * 60,
+                w: 30,
+                h: 30
+            });
+        }
+
+        // 충돌 검사
+        function checkCollisions() {
+            const pBox = {
+                x: player.x + 5,
+                y: player.y - player.h + 5,
+                w: player.w - 10,
+                h: player.h - 10
+            };
+
+            // 플랫폼 충돌
+            let onPlatform = false;
+            platforms.forEach(p => {
+                if (player.vy >= 0 &&
+                    pBox.x + pBox.w > p.x &&
+                    pBox.x < p.x + p.w &&
+                    pBox.y + pBox.h >= p.y &&
+                    pBox.y + pBox.h <= p.y + 15 &&
+                    player.y - player.h < p.y) {
+                    player.y = p.y;
+                    player.vy = 0;
+                    player.jumping = false;
+                    player.doubleJump = false;
+                    onPlatform = true;
+                }
+            });
+
+            // 장애물 충돌
+            if (player.invincible <= 0 && shieldActive <= 0) {
+                for (const o of obstacles) {
+                    let oBox;
+                    if (o.type === 'spike') {
+                        oBox = { x: o.x + 5, y: o.y + 5, w: o.w - 10, h: o.h - 5 };
+                    } else if (o.type === 'laser') {
+                        oBox = { x: o.x, y: o.y, w: o.w, h: o.h };
+                    } else {
+                        oBox = { x: o.x + 3, y: o.y + 3, w: o.w - 6, h: o.h - 6 };
+                    }
+
+                    if (pBox.x < oBox.x + oBox.w &&
+                        pBox.x + pBox.w > oBox.x &&
+                        pBox.y < oBox.y + oBox.h &&
+                        pBox.y + pBox.h > oBox.y) {
+                        return true; // 충돌!
+                    }
+                }
+            }
+
+            // 코인 수집
+            coinItems = coinItems.filter(c => {
+                const dist = Math.hypot(player.x + player.w/2 - c.x - c.r, 
+                                       player.y - player.h/2 - c.y - c.r);
+                const collectDist = magnetActive > 0 ? 100 : 25;
+                
+                if (dist < collectDist) {
+                    if (magnetActive > 0) {
+                        // 자석 효과: 끌어당김
+                        c.x += (player.x - c.x) * 0.2;
+                        c.y += (player.y - player.h/2 - c.y) * 0.2;
+                    }
+                    if (dist < 25) {
+                        coins++;
+                        score += 10;
+                        spawnParticle(c.x, c.y, COLORS.coin, 8);
+                        return false;
+                    }
+                }
+                return true;
+            });
+
+            // 파워업 수집
+            powerups = powerups.filter(p => {
+                if (pBox.x < p.x + p.w &&
+                    pBox.x + pBox.w > p.x &&
+                    pBox.y < p.y + p.h &&
+                    pBox.y + pBox.h > p.y) {
+                    if (p.type === 'magnet') {
+                        magnetActive = 500;
+                        spawnParticle(p.x + 15, p.y + 15, COLORS.magnet, 15);
+                    } else if (p.type === 'shield') {
+                        shieldActive = 500;
+                        spawnParticle(p.x + 15, p.y + 15, COLORS.shield, 15);
+                    }
+                    return false;
+                }
+                return true;
+            });
+
+            return false;
+        }
+
+        // 업데이트
+        function update() {
+            frameCount++;
+            if (!gameRunning) return;
+
+            // 거리 & 속도
+            distance += gameSpeed * 0.05;
+            score = Math.floor(distance);
+            gameSpeed = Math.min(12, 5 + distance / 500);
+
+            // 파워업 타이머
+            if (magnetActive > 0) magnetActive--;
+            if (shieldActive > 0) shieldActive--;
+            if (player.invincible > 0) player.invincible--;
+
+            // 플레이어 물리
+            player.vy += GRAVITY;
+            player.y += player.vy;
+
+            if (player.y >= groundY) {
+                player.y = groundY;
+                player.vy = 0;
+                player.jumping = false;
+                player.doubleJump = false;
+            }
+
+            // 달리기 애니메이션
+            if (!player.jumping) {
+                player.runFrame += 0.4;
+            }
+
+            // 스폰 타이머
+            platformTimer++;
+            obstacleTimer++;
+            coinTimer++;
+            powerupTimer++;
+
+            if (platformTimer > 120 + Math.random() * 60) {
+                spawnPlatform();
+                platformTimer = 0;
+            }
+
+            if (obstacleTimer > Math.max(40, 80 - gameSpeed * 3)) {
+                spawnObstacle();
+                obstacleTimer = 0;
+            }
+
+            if (coinTimer > 60 + Math.random() * 40) {
+                spawnCoins();
+                coinTimer = 0;
+            }
+
+            if (powerupTimer > 400 + Math.random() * 200) {
+                spawnPowerup();
+                powerupTimer = 0;
+            }
+
+            // 오브젝트 이동
+            platforms.forEach(p => p.x -= gameSpeed);
+            obstacles.forEach(o => o.x -= gameSpeed);
+            coinItems.forEach(c => c.x -= gameSpeed);
+            powerups.forEach(p => p.x -= gameSpeed);
+
+            // 화면 밖 제거
+            platforms = platforms.filter(p => p.x + p.w > -20);
+            obstacles = obstacles.filter(o => o.x + o.w > -20);
+            coinItems = coinItems.filter(c => c.x + c.r * 2 > -20);
+            powerups = powerups.filter(p => p.x + p.w > -20);
+
+            // 파티클 업데이트
+            particles = particles.filter(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.02;
+                return p.life > 0;
+            });
+
+            // 배경 스크롤
+            bgLayers.forEach(l => l.offset += gameSpeed * l.speed);
+
+            // 충돌 검사
+            if (checkCollisions()) {
+                endGame();
+            }
+        }
+
+        // 렌더
+        function render() {
+            ctx.setTransform(scale, 0, 0, scale, 0, 0);
+            
+            drawBackground();
+            drawPlatforms();
+            drawObstacles();
+            drawCoins();
+            drawPowerups();
+            drawParticles();
+            drawPlayer();
+            drawUI();
+        }
+
+        function gameLoop() {
+            update();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 점프
+        function jump() {
+            if (!gameRunning) return;
+            
+            if (!player.jumping) {
+                player.jumping = true;
+                player.vy = JUMP_FORCE;
+                spawnParticle(player.x + player.w/2, player.y, 'rgba(255,255,255,0.5)', 3);
+            } else if (!player.doubleJump) {
+                player.doubleJump = true;
+                player.vy = JUMP_FORCE * 0.85;
+                spawnParticle(player.x + player.w/2, player.y - player.h/2, COLORS.player, 5);
+            }
+        }
+
+        // 키보드
+        document.addEventListener('keydown', e => {
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                e.preventDefault();
+                jump();
+            }
+        });
+
+        // 터치 & 클릭
+        canvas.addEventListener('touchstart', e => { e.preventDefault(); jump(); }, { passive: false });
+        canvas.addEventListener('click', jump);
+
+        function endGame() {
+            gameRunning = false;
+            if (score > bestScore) {
+                bestScore = score;
+                localStorage.setItem('runnerBest', bestScore);
+            }
+            window.gameOver(score);
+        }
+
+        function initGame() {
+            player.y = groundY;
+            player.vy = 0;
+            player.jumping = false;
+            player.doubleJump = false;
+            player.runFrame = 0;
+            player.invincible = 0;
+            platforms = [];
+            obstacles = [];
+            coinItems = [];
+            powerups = [];
+            particles = [];
+            score = 0;
+            coins = 0;
+            distance = 0;
+            gameSpeed = 5;
+            magnetActive = 0;
+            shieldActive = 0;
+            platformTimer = 0;
+            obstacleTimer = 0;
+            coinTimer = 0;
+            powerupTimer = 0;
+            frameCount = 0;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        resizeCanvas();
+        window.GAME = {
+            name: 'Endless Runner',
+            emoji: '🏃',
+            image: '../assets/character-runner.svg',
+            start: () => { gameRunning = true; },
+            reset: () => { initGame(); render(); },
+            stop: () => { gameRunning = false; }
+        };
+        initGame();
+        gameLoop();
+    </script>
+</body>
+</html>
