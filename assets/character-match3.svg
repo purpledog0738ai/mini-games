@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <!-- 다이아몬드 그라디언트 -->
+    <linearGradient id="diamond" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00ffff"/>
+      <stop offset="50%" style="stop-color:#00d4ff"/>
+      <stop offset="100%" style="stop-color:#0099cc"/>
+    </linearGradient>
+    <!-- 루비 그라디언트 -->
+    <linearGradient id="ruby" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff6b6b"/>
+      <stop offset="50%" style="stop-color:#ff4757"/>
+      <stop offset="100%" style="stop-color:#c0392b"/>
+    </linearGradient>
+    <!-- 에메랄드 그라디언트 -->
+    <linearGradient id="emerald" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2ed573"/>
+      <stop offset="50%" style="stop-color:#26de81"/>
+      <stop offset="100%" style="stop-color:#16a085"/>
+    </linearGradient>
+    <!-- 사파이어 그라디언트 -->
+    <linearGradient id="sapphire" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#5f9fff"/>
+      <stop offset="50%" style="stop-color:#3742fa"/>
+      <stop offset="100%" style="stop-color:#2f3542"/>
+    </linearGradient>
+    <!-- 토파즈 그라디언트 -->
+    <linearGradient id="topaz" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fff200"/>
+      <stop offset="50%" style="stop-color:#ffd700"/>
+      <stop offset="100%" style="stop-color:#f39c12"/>
+    </linearGradient>
+    <!-- 자수정 그라디언트 -->
+    <linearGradient id="amethyst" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#d8b5ff"/>
+      <stop offset="50%" style="stop-color:#a55eea"/>
+      <stop offset="100%" style="stop-color:#8e44ad"/>
+    </linearGradient>
+    <!-- 글로우 효과 -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- 중앙 다이아몬드 (메인) -->
+  <g filter="url(#glow)">
+    <polygon points="50,8 65,30 50,52 35,30" fill="url(#diamond)" stroke="#00ffff" stroke-width="1"/>
+    <polygon points="50,8 58,22 50,36 42,22" fill="rgba(255,255,255,0.4)"/>
+  </g>
+  
+  <!-- 왼쪽 상단 루비 -->
+  <g filter="url(#glow)">
+    <polygon points="18,25 28,38 18,51 8,38" fill="url(#ruby)" stroke="#ff4757" stroke-width="0.5"/>
+    <polygon points="18,25 22,32 18,39 14,32" fill="rgba(255,255,255,0.3)"/>
+  </g>
+  
+  <!-- 오른쪽 상단 에메랄드 -->
+  <g filter="url(#glow)">
+    <polygon points="82,25 92,38 82,51 72,38" fill="url(#emerald)" stroke="#2ed573" stroke-width="0.5"/>
+    <polygon points="82,25 86,32 82,39 78,32" fill="rgba(255,255,255,0.3)"/>
+  </g>
+  
+  <!-- 왼쪽 하단 사파이어 -->
+  <g filter="url(#glow)">
+    <polygon points="22,55 34,70 22,85 10,70" fill="url(#sapphire)" stroke="#3742fa" stroke-width="0.5"/>
+    <polygon points="22,55 27,63 22,71 17,63" fill="rgba(255,255,255,0.3)"/>
+  </g>
+  
+  <!-- 중앙 하단 토파즈 -->
+  <g filter="url(#glow)">
+    <polygon points="50,55 62,70 50,85 38,70" fill="url(#topaz)" stroke="#ffd700" stroke-width="0.5"/>
+    <polygon points="50,55 55,63 50,71 45,63" fill="rgba(255,255,255,0.3)"/>
+  </g>
+  
+  <!-- 오른쪽 하단 자수정 -->
+  <g filter="url(#glow)">
+    <polygon points="78,55 90,70 78,85 66,70" fill="url(#amethyst)" stroke="#a55eea" stroke-width="0.5"/>
+    <polygon points="78,55 83,63 78,71 73,63" fill="rgba(255,255,255,0.3)"/>
+  </g>
+  
+  <!-- 반짝임 효과 -->
+  <circle cx="50" cy="18" r="2" fill="white" opacity="0.9"/>
+  <circle cx="15" cy="32" r="1.5" fill="white" opacity="0.8"/>
+  <circle cx="85" cy="32" r="1.5" fill="white" opacity="0.8"/>
+  <circle cx="19" cy="62" r="1.5" fill="white" opacity="0.8"/>
+  <circle cx="47" cy="62" r="1.5" fill="white" opacity="0.8"/>
+  <circle cx="75" cy="62" r="1.5" fill="white" opacity="0.8"/>
+  
+  <!-- 파티클 -->
+  <circle cx="30" cy="15" r="2" fill="#ffd700" opacity="0.6"/>
+  <circle cx="70" cy="12" r="1.5" fill="#00ffff" opacity="0.5"/>
+  <circle cx="5" cy="50" r="1.5" fill="#ff4757" opacity="0.5"/>
+  <circle cx="95" cy="55" r="2" fill="#2ed573" opacity="0.6"/>
+  <circle cx="50" cy="95" r="2" fill="#a55eea" opacity="0.5"/>
+</svg>

@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1a0a2e">
+    <title>💎 Match-3</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a0a2e 0%, #2d1b4e 100%);
+            touch-action: none;
+            user-select: none;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .header {
+            position: absolute;
+            top: 20px;
+            display: flex;
+            gap: 30px;
+            color: #fff;
+            font-size: 18px;
+            z-index: 10;
+        }
+        .header span { color: #ffd700; font-weight: bold; }
+        #gameCanvas {
+            border-radius: 15px;
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.3);
+        }
+        .moves-bar {
+            position: absolute;
+            bottom: 20px;
+            display: flex;
+            gap: 20px;
+            color: #fff;
+            font-size: 16px;
+            z-index: 10;
+        }
+        .combo-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+            pointer-events: none;
+            opacity: 0;
+            z-index: 100;
+        }
+        .combo-popup.show {
+            animation: popupAnim 0.8s ease-out forwards;
+        }
+        @keyframes popupAnim {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            30% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1) translateY(-50px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>💎 <span id="score">0</span></div>
+        <div>🏆 <span id="best">0</span></div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+    <div class="moves-bar">
+        <div>🎯 목표: <span id="target">1000</span></div>
+        <div>🔄 이동: <span id="moves">30</span></div>
+    </div>
+    <div class="combo-popup" id="comboPopup"></div>
+
+    <script src="../framework/game-wrapper.js"></script>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const comboPopup = document.getElementById('comboPopup');
+
+        const GRID_SIZE = 8;
+        const GEMS = ['💎', '🔴', '🟢', '🔵', '🟡', '🟣', '🧡'];
+        const GEM_COLORS = ['#00d4ff', '#ff4757', '#2ed573', '#3742fa', '#ffd700', '#a55eea', '#ff7f50'];
+
+        let CELL_SIZE;
+        let board = [];
+        let score = 0;
+        let best = parseInt(localStorage.getItem('match3Best')) || 0;
+        let moves = 30;
+        let targetScore = 1000;
+        let gameRunning = false;
+        let selected = null;
+        let animating = false;
+        let combo = 0;
+
+        function resizeCanvas() {
+            const maxSize = Math.min(window.innerWidth - 30, window.innerHeight - 150, 500);
+            CELL_SIZE = Math.floor(maxSize / GRID_SIZE);
+            canvas.width = GRID_SIZE * CELL_SIZE;
+            canvas.height = GRID_SIZE * CELL_SIZE;
+        }
+
+        function initGame() {
+            board = [];
+            for (let y = 0; y < GRID_SIZE; y++) {
+                board[y] = [];
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    board[y][x] = {
+                        type: getRandomGem(x, y),
+                        scale: 1,
+                        offsetY: 0,
+                        removing: false
+                    };
+                }
+            }
+            score = 0;
+            moves = 30;
+            combo = 0;
+            selected = null;
+            animating = false;
+            updateUI();
+        }
+
+        function getRandomGem(x, y) {
+            let gem;
+            let attempts = 0;
+            do {
+                gem = Math.floor(Math.random() * GEMS.length);
+                attempts++;
+            } while (attempts < 50 && wouldMatch(x, y, gem));
+            return gem;
+        }
+
+        function wouldMatch(x, y, gem) {
+            // 가로 체크
+            if (x >= 2 && board[y][x-1]?.type === gem && board[y][x-2]?.type === gem) return true;
+            // 세로 체크
+            if (y >= 2 && board[y-1]?.[x]?.type === gem && board[y-2]?.[x]?.type === gem) return true;
+            return false;
+        }
+
+        function draw() {
+            // 배경
+            ctx.fillStyle = '#1a0a2e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 그리드 배경
+            for (let y = 0; y < GRID_SIZE; y++) {
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    const isDark = (x + y) % 2 === 0;
+                    ctx.fillStyle = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)';
+                    ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                }
+            }
+
+            // 선택된 셀 하이라이트
+            if (selected) {
+                ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
+                ctx.fillRect(selected.x * CELL_SIZE, selected.y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                ctx.strokeStyle = '#ffd700';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(selected.x * CELL_SIZE + 2, selected.y * CELL_SIZE + 2, CELL_SIZE - 4, CELL_SIZE - 4);
+            }
+
+            // 보석 그리기
+            ctx.font = `${CELL_SIZE - 16}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            for (let y = 0; y < GRID_SIZE; y++) {
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    const gem = board[y][x];
+                    if (!gem || gem.type < 0) continue;
+
+                    const centerX = x * CELL_SIZE + CELL_SIZE / 2;
+                    const centerY = y * CELL_SIZE + CELL_SIZE / 2 + (gem.offsetY || 0);
+
+                    ctx.save();
+                    ctx.translate(centerX, centerY);
+                    ctx.scale(gem.scale, gem.scale);
+
+                    if (gem.removing) {
+                        ctx.globalAlpha = gem.scale;
+                    }
+
+                    // 보석 그림자
+                    ctx.shadowColor = GEM_COLORS[gem.type];
+                    ctx.shadowBlur = 10;
+                    ctx.fillText(GEMS[gem.type], 0, 3);
+                    ctx.shadowBlur = 0;
+
+                    ctx.restore();
+                    ctx.globalAlpha = 1;
+                }
+            }
+        }
+
+        function handleClick(e) {
+            if (!gameRunning || animating) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const x = Math.floor((clientX - rect.left) / CELL_SIZE);
+            const y = Math.floor((clientY - rect.top) / CELL_SIZE);
+
+            if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) return;
+
+            if (!selected) {
+                selected = { x, y };
+            } else {
+                const dx = Math.abs(x - selected.x);
+                const dy = Math.abs(y - selected.y);
+
+                if ((dx === 1 && dy === 0) || (dx === 0 && dy === 1)) {
+                    trySwap(selected.x, selected.y, x, y);
+                } else if (x === selected.x && y === selected.y) {
+                    selected = null;
+                } else {
+                    selected = { x, y };
+                }
+            }
+            draw();
+        }
+
+        async function trySwap(x1, y1, x2, y2) {
+            animating = true;
+            selected = null;
+
+            // 스왑
+            const temp = board[y1][x1];
+            board[y1][x1] = board[y2][x2];
+            board[y2][x2] = temp;
+
+            draw();
+
+            const matches = findMatches();
+            if (matches.length === 0) {
+                // 스왑 취소
+                await sleep(150);
+                const temp2 = board[y1][x1];
+                board[y1][x1] = board[y2][x2];
+                board[y2][x2] = temp2;
+                draw();
+                animating = false;
+                return;
+            }
+
+            moves--;
+            combo = 0;
+            await processMatches();
+            updateUI();
+
+            if (moves <= 0) {
+                endGame();
+            }
+
+            animating = false;
+        }
+
+        function findMatches() {
+            const matches = [];
+
+            // 가로 매치
+            for (let y = 0; y < GRID_SIZE; y++) {
+                let count = 1;
+                for (let x = 1; x <= GRID_SIZE; x++) {
+                    if (x < GRID_SIZE && board[y][x].type === board[y][x-1].type && board[y][x].type >= 0) {
+                        count++;
+                    } else {
+                        if (count >= 3) {
+                            for (let i = x - count; i < x; i++) {
+                                matches.push({ x: i, y });
+                            }
+                        }
+                        count = 1;
+                    }
+                }
+            }
+
+            // 세로 매치
+            for (let x = 0; x < GRID_SIZE; x++) {
+                let count = 1;
+                for (let y = 1; y <= GRID_SIZE; y++) {
+                    if (y < GRID_SIZE && board[y][x].type === board[y-1][x].type && board[y][x].type >= 0) {
+                        count++;
+                    } else {
+                        if (count >= 3) {
+                            for (let i = y - count; i < y; i++) {
+                                matches.push({ x, y: i });
+                            }
+                        }
+                        count = 1;
+                    }
+                }
+            }
+
+            // 중복 제거
+            const unique = [];
+            const seen = new Set();
+            for (const m of matches) {
+                const key = `${m.x},${m.y}`;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    unique.push(m);
+                }
+            }
+
+            return unique;
+        }
+
+        async function processMatches() {
+            let matches = findMatches();
+
+            while (matches.length > 0) {
+                combo++;
+                const points = matches.length * 10 * combo;
+                score += points;
+
+                if (combo >= 2) {
+                    showCombo(combo);
+                }
+
+                // 제거 애니메이션
+                for (const m of matches) {
+                    board[m.y][m.x].removing = true;
+                }
+
+                for (let i = 0; i < 10; i++) {
+                    for (const m of matches) {
+                        board[m.y][m.x].scale -= 0.1;
+                    }
+                    draw();
+                    await sleep(20);
+                }
+
+                // 보석 제거
+                for (const m of matches) {
+                    board[m.y][m.x].type = -1;
+                }
+
+                // 떨어지기
+                await dropGems();
+
+                // 빈 곳 채우기
+                await fillGems();
+
+                matches = findMatches();
+            }
+        }
+
+        async function dropGems() {
+            let dropped;
+            do {
+                dropped = false;
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    for (let y = GRID_SIZE - 1; y > 0; y--) {
+                        if (board[y][x].type < 0 && board[y-1][x].type >= 0) {
+                            board[y][x] = board[y-1][x];
+                            board[y-1][x] = { type: -1, scale: 1, offsetY: 0, removing: false };
+                            board[y][x].offsetY = -CELL_SIZE;
+                            dropped = true;
+                        }
+                    }
+                }
+                if (dropped) {
+                    for (let i = 0; i < 10; i++) {
+                        for (let y = 0; y < GRID_SIZE; y++) {
+                            for (let x = 0; x < GRID_SIZE; x++) {
+                                if (board[y][x].offsetY < 0) {
+                                    board[y][x].offsetY += CELL_SIZE / 10;
+                                }
+                            }
+                        }
+                        draw();
+                        await sleep(15);
+                    }
+                }
+            } while (dropped);
+        }
+
+        async function fillGems() {
+            const newGems = [];
+            for (let x = 0; x < GRID_SIZE; x++) {
+                for (let y = 0; y < GRID_SIZE; y++) {
+                    if (board[y][x].type < 0) {
+                        board[y][x] = {
+                            type: Math.floor(Math.random() * GEMS.length),
+                            scale: 0,
+                            offsetY: 0,
+                            removing: false
+                        };
+                        newGems.push(board[y][x]);
+                    }
+                }
+            }
+
+            for (let i = 0; i < 10; i++) {
+                for (const gem of newGems) {
+                    gem.scale += 0.1;
+                }
+                draw();
+                await sleep(20);
+            }
+        }
+
+        function showCombo(c) {
+            comboPopup.textContent = `${c}x COMBO!`;
+            comboPopup.classList.remove('show');
+            void comboPopup.offsetWidth;
+            comboPopup.classList.add('show');
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function updateUI() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('best').textContent = best;
+            document.getElementById('moves').textContent = moves;
+            document.getElementById('target').textContent = targetScore;
+        }
+
+        function endGame() {
+            gameRunning = false;
+            if (score > best) {
+                best = score;
+                localStorage.setItem('match3Best', best);
+            }
+            window.gameOver(score);
+        }
+
+        canvas.addEventListener('click', handleClick);
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleClick(e);
+        }, { passive: false });
+
+        // 키보드 지원
+        document.addEventListener('keydown', (e) => {
+            if (!gameRunning || animating || !selected) return;
+
+            let nx = selected.x;
+            let ny = selected.y;
+
+            switch (e.code) {
+                case 'ArrowUp': case 'KeyW': ny--; break;
+                case 'ArrowDown': case 'KeyS': ny++; break;
+                case 'ArrowLeft': case 'KeyA': nx--; break;
+                case 'ArrowRight': case 'KeyD': nx++; break;
+                default: return;
+            }
+
+            if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
+                trySwap(selected.x, selected.y, nx, ny);
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            draw();
+        });
+
+        resizeCanvas();
+
+        // 게임 등록
+        window.GAME = {
+            name: 'Match-3',
+            emoji: '💎',
+            image: '../assets/character-match3.svg',
+            start: () => { gameRunning = true; },
+            reset: () => { initGame(); draw(); },
+            stop: () => { gameRunning = false; }
+        };
+
+        initGame();
+        draw();
+    </script>
+</body>
+</html>
