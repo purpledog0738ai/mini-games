@@ -1,0 +1,45 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- 배경 원 -->
+  <circle cx="50" cy="50" r="48" fill="#1a1a2e"/>
+  
+  <!-- 쌓인 블록들 -->
+  <!-- 맨 아래 블록 (빨강) -->
+  <rect x="20" y="70" width="60" height="12" rx="2" fill="#e74c3c"/>
+  <rect x="20" y="70" width="60" height="3" fill="#ec7063" opacity="0.6"/>
+  
+  <!-- 두 번째 블록 (주황) -->
+  <rect x="22" y="56" width="56" height="12" rx="2" fill="#e67e22"/>
+  <rect x="22" y="56" width="56" height="3" fill="#f0b27a" opacity="0.6"/>
+  
+  <!-- 세 번째 블록 (노랑) -->
+  <rect x="25" y="42" width="50" height="12" rx="2" fill="#f1c40f"/>
+  <rect x="25" y="42" width="50" height="3" fill="#f9e79f" opacity="0.6"/>
+  
+  <!-- 네 번째 블록 (초록) -->
+  <rect x="28" y="28" width="44" height="12" rx="2" fill="#2ecc71"/>
+  <rect x="28" y="28" width="44" height="3" fill="#82e0aa" opacity="0.6"/>
+  
+  <!-- 움직이는 블록 (파랑) - 위에서 떨어지는 중 -->
+  <rect x="15" y="14" width="40" height="12" rx="2" fill="#3498db">
+    <animate attributeName="x" values="15;45;15" dur="1.5s" repeatCount="indefinite"/>
+  </rect>
+  <rect x="15" y="14" width="40" height="3" fill="#85c1e9" opacity="0.6">
+    <animate attributeName="x" values="15;45;15" dur="1.5s" repeatCount="indefinite"/>
+  </rect>
+  
+  <!-- 화살표 (좌우 움직임 표시) -->
+  <path d="M10 20 L5 25 L10 30" stroke="#00ff88" stroke-width="2" fill="none" opacity="0.8">
+    <animate attributeName="opacity" values="0.8;0.3;0.8" dur="1s" repeatCount="indefinite"/>
+  </path>
+  <path d="M90 20 L95 25 L90 30" stroke="#00ff88" stroke-width="2" fill="none" opacity="0.8">
+    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="1s" repeatCount="indefinite"/>
+  </path>
+  
+  <!-- 반짝이 효과 -->
+  <circle cx="75" cy="35" r="2" fill="#FFD700">
+    <animate attributeName="opacity" values="1;0;1" dur="0.8s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="30" cy="25" r="1.5" fill="#FFD700">
+    <animate attributeName="opacity" values="0;1;0" dur="0.8s" repeatCount="indefinite"/>
+  </circle>
+</svg>
