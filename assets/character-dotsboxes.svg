@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a3e"/>
+      <stop offset="100%" style="stop-color:#2d1b4e"/>
+    </linearGradient>
+    <linearGradient id="redBox" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff6b6b;stop-opacity:0.6"/>
+      <stop offset="100%" style="stop-color:#ee5a5a;stop-opacity:0.4"/>
+    </linearGradient>
+    <linearGradient id="blueBox" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4ecdc4;stop-opacity:0.6"/>
+      <stop offset="100%" style="stop-color:#44a3a0;stop-opacity:0.4"/>
+    </linearGradient>
+    <radialGradient id="dotGrad" cx="40%" cy="40%">
+      <stop offset="0%" style="stop-color:#fff"/>
+      <stop offset="100%" style="stop-color:#aaa"/>
+    </radialGradient>
+  </defs>
+  
+  <!-- 배경 -->
+  <rect x="5" y="5" width="90" height="90" rx="10" fill="url(#bgGrad)" opacity="0.3"/>
+  
+  <!-- 완성된 박스들 -->
+  <rect x="15" y="15" width="25" height="25" rx="3" fill="url(#redBox)">
+    <animate attributeName="opacity" values="0.7;1;0.7" dur="2s" repeatCount="indefinite"/>
+  </rect>
+  <rect x="60" y="60" width="25" height="25" rx="3" fill="url(#blueBox)">
+    <animate attributeName="opacity" values="0.7;1;0.7" dur="2s" repeatCount="indefinite" begin="0.5s"/>
+  </rect>
+  
+  <!-- 수평 선들 (빨강) -->
+  <rect x="15" y="12" width="25" height="5" rx="2" fill="#ff6b6b"/>
+  <rect x="15" y="38" width="25" height="5" rx="2" fill="#ff6b6b"/>
+  
+  <!-- 수직 선들 (빨강) -->
+  <rect x="12" y="15" width="5" height="25" rx="2" fill="#ff6b6b"/>
+  <rect x="38" y="15" width="5" height="25" rx="2" fill="#ff6b6b"/>
+  
+  <!-- 수평 선들 (파랑) -->
+  <rect x="60" y="57" width="25" height="5" rx="2" fill="#4ecdc4"/>
+  <rect x="60" y="83" width="25" height="5" rx="2" fill="#4ecdc4"/>
+  
+  <!-- 수직 선들 (파랑) -->
+  <rect x="57" y="60" width="5" height="25" rx="2" fill="#4ecdc4"/>
+  <rect x="83" y="60" width="5" height="25" rx="2" fill="#4ecdc4"/>
+  
+  <!-- 미완성 선들 (회색) -->
+  <rect x="42" y="12" width="25" height="5" rx="2" fill="rgba(255,255,255,0.2)"/>
+  <rect x="42" y="57" width="25" height="5" rx="2" fill="rgba(255,255,255,0.2)"/>
+  <rect x="57" y="15" width="5" height="25" rx="2" fill="rgba(255,255,255,0.2)"/>
+  
+  <!-- 그려지는 선 애니메이션 -->
+  <rect x="15" y="57" width="0" height="5" rx="2" fill="#ff6b6b">
+    <animate attributeName="width" values="0;25;25;0" dur="3s" repeatCount="indefinite"/>
+  </rect>
+  
+  <!-- 점들 (3x3 그리드) -->
+  <g>
+    <!-- Row 1 -->
+    <circle cx="15" cy="15" r="5" fill="url(#dotGrad)"/>
+    <circle cx="42" cy="15" r="5" fill="url(#dotGrad)"/>
+    <circle cx="70" cy="15" r="5" fill="url(#dotGrad)"/>
+    
+    <!-- Row 2 -->
+    <circle cx="15" cy="42" r="5" fill="url(#dotGrad)"/>
+    <circle cx="42" cy="42" r="5" fill="url(#dotGrad)">
+      <animate attributeName="r" values="5;6;5" dur="1.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="70" cy="42" r="5" fill="url(#dotGrad)"/>
+    
+    <!-- Row 3 -->
+    <circle cx="15" cy="62" r="5" fill="url(#dotGrad)"/>
+    <circle cx="42" cy="62" r="5" fill="url(#dotGrad)"/>
+    <circle cx="62" cy="62" r="5" fill="url(#dotGrad)"/>
+    <circle cx="87" cy="62" r="5" fill="url(#dotGrad)"/>
+    
+    <!-- Row 4 -->
+    <circle cx="62" cy="87" r="5" fill="url(#dotGrad)"/>
+    <circle cx="87" cy="87" r="5" fill="url(#dotGrad)"/>
+  </g>
+  
+  <!-- 타겟 이모지 -->
+  <text x="85" y="25" font-size="18" text-anchor="middle">🎯</text>
+</svg>
