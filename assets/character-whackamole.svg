@@ -1,0 +1,43 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- 구멍 배경 -->
+  <ellipse cx="50" cy="85" rx="40" ry="12" fill="#3d2914"/>
+  <ellipse cx="50" cy="85" rx="35" ry="10" fill="#2a1d0f"/>
+  
+  <!-- 두더지 몸통 -->
+  <ellipse cx="50" cy="65" rx="28" ry="20" fill="#8B4513"/>
+  
+  <!-- 두더지 얼굴 -->
+  <ellipse cx="50" cy="42" rx="25" ry="24" fill="#A0522D"/>
+  
+  <!-- 볼 -->
+  <circle cx="28" cy="48" r="7" fill="#DEB887"/>
+  <circle cx="72" cy="48" r="7" fill="#DEB887"/>
+  
+  <!-- 눈 -->
+  <circle cx="40" cy="38" r="6" fill="white"/>
+  <circle cx="60" cy="38" r="6" fill="white"/>
+  <circle cx="42" cy="38" r="3" fill="#1a1a1a"/>
+  <circle cx="62" cy="38" r="3" fill="#1a1a1a"/>
+  <!-- 눈 하이라이트 -->
+  <circle cx="43" cy="36" r="1.5" fill="white"/>
+  <circle cx="63" cy="36" r="1.5" fill="white"/>
+  
+  <!-- 코 -->
+  <ellipse cx="50" cy="50" rx="7" ry="5" fill="#5D4037"/>
+  <ellipse cx="50" cy="48" rx="3" ry="2" fill="#7D6047" opacity="0.5"/>
+  
+  <!-- 이빨 -->
+  <rect x="44" y="58" width="5" height="7" rx="2" fill="white"/>
+  <rect x="51" y="58" width="5" height="7" rx="2" fill="white"/>
+  
+  <!-- 귀 -->
+  <circle cx="25" cy="25" r="8" fill="#A0522D"/>
+  <circle cx="25" cy="25" r="5" fill="#DEB887"/>
+  <circle cx="75" cy="25" r="8" fill="#A0522D"/>
+  <circle cx="75" cy="25" r="5" fill="#DEB887"/>
+  
+  <!-- 망치 -->
+  <rect x="70" y="8" width="8" height="25" rx="2" fill="#8B4513" transform="rotate(25, 74, 20)"/>
+  <rect x="62" y="5" width="24" height="14" rx="3" fill="#CD853F" transform="rotate(25, 74, 12)"/>
+  <rect x="64" y="7" width="20" height="10" rx="2" fill="#DEB887" opacity="0.3" transform="rotate(25, 74, 12)"/>
+</svg>

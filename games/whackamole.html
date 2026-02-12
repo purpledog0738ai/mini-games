@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Whack-a-Mole - Mini Games</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #8B4513, #D2691E);
+            overflow: hidden;
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* 헤더 */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 20px;
+            color: white;
+        }
+        .score-box, .time-box {
+            background: rgba(0,0,0,0.3);
+            padding: 10px 20px;
+            border-radius: 15px;
+            text-align: center;
+            backdrop-filter: blur(5px);
+        }
+        .score-box .label, .time-box .label {
+            font-size: 0.75rem;
+            opacity: 0.8;
+        }
+        .score-box .value, .time-box .value {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .time-box.warning .value {
+            color: #ff6b6b;
+            animation: pulse 0.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        /* 게임 보드 */
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            width: 100%;
+            max-width: 320px;
+            margin: 20px 0;
+        }
+
+        .hole {
+            aspect-ratio: 1;
+            background: linear-gradient(180deg, #3d2914 0%, #2a1d0f 100%);
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            box-shadow: inset 0 10px 20px rgba(0,0,0,0.5), 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .hole::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: radial-gradient(ellipse at 50% 30%, transparent 60%, rgba(0,0,0,0.4) 100%);
+            pointer-events: none;
+        }
+
+        .mole {
+            position: absolute;
+            bottom: -100%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 80%;
+            transition: bottom 0.15s ease-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+        }
+        .mole.up {
+            bottom: 10%;
+        }
+        .mole.hit {
+            animation: hitAnim 0.3s ease-out forwards;
+        }
+        @keyframes hitAnim {
+            0% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.3) rotate(15deg); }
+            100% { transform: translateX(-50%) scale(0.5); bottom: -100%; opacity: 0; }
+        }
+
+        /* 두더지 SVG */
+        .mole-svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 점수 팝업 */
+        .score-popup {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #FFD700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            animation: popUp 0.5s ease-out forwards;
+            pointer-events: none;
+        }
+        @keyframes popUp {
+            0% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-50px); }
+        }
+
+        /* 콤보 표시 */
+        .combo {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3rem;
+            font-weight: bold;
+            color: #FFD700;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+            animation: comboAnim 0.5s ease-out forwards;
+            pointer-events: none;
+            z-index: 100;
+        }
+        @keyframes comboAnim {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+        }
+
+        /* 메뉴 화면 */
+        .menu-screen {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, #8B4513, #D2691E);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            z-index: 200;
+        }
+        .menu-screen.hidden { display: none; }
+
+        .menu-screen h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .menu-screen .icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: bounce 1s infinite;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .menu-screen .desc {
+            font-size: 1.1rem;
+            opacity: 0.8;
+            margin-bottom: 30px;
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-item {
+            background: rgba(255,255,255,0.15);
+            padding: 15px 25px;
+            border-radius: 15px;
+            text-align: center;
+            backdrop-filter: blur(5px);
+        }
+        .stat-item .label {
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+        .stat-item .value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #FFD700;
+        }
+
+        .difficulty {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .diff-btn {
+            padding: 10px 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            background: transparent;
+            color: white;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .diff-btn.active {
+            background: rgba(255,255,255,0.2);
+            border-color: #FFD700;
+        }
+
+        .btn {
+            background: linear-gradient(145deg, #FFD700, #FFA500);
+            color: #5D4037;
+            border: none;
+            padding: 18px 50px;
+            border-radius: 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+        }
+        .btn:hover { transform: translateY(-2px); }
+        .btn:active { transform: scale(0.98); }
+
+        /* 게임오버 오버레이 */
+        .gameover-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            z-index: 300;
+        }
+        .gameover-overlay.hidden { display: none; }
+
+        .gameover-overlay h2 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        .gameover-overlay .final-score {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #FFD700;
+            margin: 20px 0;
+        }
+        .gameover-overlay .final-stats {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        .gameover-overlay .stat {
+            text-align: center;
+        }
+        .gameover-overlay .stat .num {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .gameover-overlay .stat .txt {
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+        .new-record {
+            color: #FFD700;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            animation: pulse 0.5s infinite;
+        }
+
+        /* 힌트 */
+        .hint {
+            position: fixed;
+            bottom: 30px;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.85rem;
+        }
+
+        /* 반응형 */
+        @media (max-width: 360px) {
+            .game-board { gap: 10px; }
+            .mole { font-size: 2.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 메뉴 화면 -->
+    <div class="menu-screen" id="menuScreen">
+        <div class="icon">🐹</div>
+        <h1>Whack-a-Mole</h1>
+        <p class="desc">두더지를 잡아라!</p>
+
+        <div class="stats">
+            <div class="stat-item">
+                <div class="label">최고 점수</div>
+                <div class="value" id="bestScore">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="label">총 잡은 수</div>
+                <div class="value" id="totalHits">0</div>
+            </div>
+        </div>
+
+        <div class="difficulty">
+            <button class="diff-btn active" data-diff="easy">쉬움</button>
+            <button class="diff-btn" data-diff="normal">보통</button>
+            <button class="diff-btn" data-diff="hard">어려움</button>
+        </div>
+
+        <button class="btn" id="startBtn">🔨 시작하기</button>
+    </div>
+
+    <!-- 게임 화면 -->
+    <div class="game-container">
+        <div class="header">
+            <div class="score-box">
+                <div class="label">점수</div>
+                <div class="value" id="score">0</div>
+            </div>
+            <div class="time-box" id="timeBox">
+                <div class="label">남은 시간</div>
+                <div class="value" id="time">30</div>
+            </div>
+        </div>
+
+        <div class="game-board" id="gameBoard">
+            <!-- 9개의 구멍 -->
+        </div>
+    </div>
+
+    <!-- 게임오버 오버레이 -->
+    <div class="gameover-overlay hidden" id="gameoverOverlay">
+        <h2>🎮 게임 종료!</h2>
+        <div class="new-record hidden" id="newRecord">🏆 신기록!</div>
+        <div class="final-score" id="finalScore">0</div>
+        <div class="final-stats">
+            <div class="stat">
+                <div class="num" id="finalHits">0</div>
+                <div class="txt">잡은 두더지</div>
+            </div>
+            <div class="stat">
+                <div class="num" id="finalMiss">0</div>
+                <div class="txt">놓친 두더지</div>
+            </div>
+            <div class="stat">
+                <div class="num" id="finalCombo">0</div>
+                <div class="txt">최대 콤보</div>
+            </div>
+        </div>
+        <button class="btn" id="restartBtn">🔄 다시 하기</button>
+        <button class="btn" id="menuBtn" style="background: transparent; border: 2px solid white; color: white; margin-top: 10px;">🏠 메뉴로</button>
+    </div>
+
+    <p class="hint" id="hint">두더지를 터치해서 잡으세요!</p>
+
+    <!-- 사운드 -->
+    <script>
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function playSound(type) {
+            if (!audioCtx) audioCtx = new AudioContext();
+            
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            if (type === 'hit') {
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.1);
+            } else if (type === 'miss') {
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(200, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.2);
+            } else if (type === 'combo') {
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.15);
+                gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.15);
+            } else if (type === 'gameover') {
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(400, audioCtx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.3);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.3);
+            }
+        }
+    </script>
+
+    <script>
+        // DOM 요소
+        const menuScreen = document.getElementById('menuScreen');
+        const gameBoard = document.getElementById('gameBoard');
+        const scoreEl = document.getElementById('score');
+        const timeEl = document.getElementById('time');
+        const timeBox = document.getElementById('timeBox');
+        const bestScoreEl = document.getElementById('bestScore');
+        const totalHitsEl = document.getElementById('totalHits');
+        const gameoverOverlay = document.getElementById('gameoverOverlay');
+        const finalScoreEl = document.getElementById('finalScore');
+        const finalHitsEl = document.getElementById('finalHits');
+        const finalMissEl = document.getElementById('finalMiss');
+        const finalComboEl = document.getElementById('finalCombo');
+        const newRecordEl = document.getElementById('newRecord');
+        const hint = document.getElementById('hint');
+
+        // 게임 상태
+        let score = 0;
+        let timeLeft = 30;
+        let gameInterval = null;
+        let moleInterval = null;
+        let isPlaying = false;
+        let hits = 0;
+        let misses = 0;
+        let combo = 0;
+        let maxCombo = 0;
+        let difficulty = 'easy';
+
+        // 난이도 설정
+        const DIFFICULTY = {
+            easy: { moleTime: 1200, spawnRate: 1000, gameTime: 30 },
+            normal: { moleTime: 900, spawnRate: 800, gameTime: 30 },
+            hard: { moleTime: 600, spawnRate: 600, gameTime: 30 }
+        };
+
+        // 저장된 데이터 로드
+        let bestScore = parseInt(localStorage.getItem('whackBest')) || 0;
+        let totalHitsSaved = parseInt(localStorage.getItem('whackTotalHits')) || 0;
+        bestScoreEl.textContent = bestScore;
+        totalHitsEl.textContent = totalHitsSaved;
+
+        // 구멍 생성
+        function createHoles() {
+            gameBoard.innerHTML = '';
+            for (let i = 0; i < 9; i++) {
+                const hole = document.createElement('div');
+                hole.className = 'hole';
+                hole.dataset.index = i;
+                
+                const mole = document.createElement('div');
+                mole.className = 'mole';
+                mole.innerHTML = `
+                    <svg class="mole-svg" viewBox="0 0 100 100">
+                        <!-- 몸통 -->
+                        <ellipse cx="50" cy="70" rx="35" ry="25" fill="#8B4513"/>
+                        <!-- 얼굴 -->
+                        <ellipse cx="50" cy="45" rx="30" ry="28" fill="#A0522D"/>
+                        <!-- 볼 -->
+                        <circle cx="25" cy="50" r="8" fill="#DEB887"/>
+                        <circle cx="75" cy="50" r="8" fill="#DEB887"/>
+                        <!-- 눈 -->
+                        <circle cx="38" cy="40" r="6" fill="white"/>
+                        <circle cx="62" cy="40" r="6" fill="white"/>
+                        <circle cx="40" cy="40" r="3" fill="black"/>
+                        <circle cx="64" cy="40" r="3" fill="black"/>
+                        <!-- 코 -->
+                        <ellipse cx="50" cy="52" rx="8" ry="6" fill="#5D4037"/>
+                        <!-- 이빨 -->
+                        <rect x="44" y="60" width="5" height="8" rx="2" fill="white"/>
+                        <rect x="51" y="60" width="5" height="8" rx="2" fill="white"/>
+                    </svg>
+                `;
+                
+                hole.appendChild(mole);
+                hole.addEventListener('click', (e) => handleHoleClick(e, hole, mole));
+                hole.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    handleHoleClick(e, hole, mole);
+                }, { passive: false });
+                
+                gameBoard.appendChild(hole);
+            }
+        }
+
+        // 구멍 클릭 처리
+        function handleHoleClick(e, hole, mole) {
+            if (!isPlaying) return;
+            
+            if (mole.classList.contains('up') && !mole.classList.contains('hit')) {
+                // 두더지 잡기 성공
+                mole.classList.add('hit');
+                mole.classList.remove('up');
+                
+                combo++;
+                if (combo > maxCombo) maxCombo = combo;
+                
+                let points = 10;
+                if (combo >= 10) points = 30;
+                else if (combo >= 5) points = 20;
+                else if (combo >= 3) points = 15;
+                
+                score += points;
+                hits++;
+                scoreEl.textContent = score;
+                
+                // 점수 팝업
+                showScorePopup(hole, points);
+                
+                // 콤보 표시
+                if (combo >= 3) {
+                    showCombo(combo);
+                    playSound('combo');
+                } else {
+                    playSound('hit');
+                }
+                
+                setTimeout(() => {
+                    mole.classList.remove('hit');
+                }, 300);
+            }
+        }
+
+        // 점수 팝업
+        function showScorePopup(hole, points) {
+            const popup = document.createElement('div');
+            popup.className = 'score-popup';
+            popup.textContent = `+${points}`;
+            hole.appendChild(popup);
+            setTimeout(() => popup.remove(), 500);
+        }
+
+        // 콤보 표시
+        function showCombo(combo) {
+            const existing = document.querySelector('.combo');
+            if (existing) existing.remove();
+            
+            const comboEl = document.createElement('div');
+            comboEl.className = 'combo';
+            comboEl.textContent = `${combo} COMBO! 🔥`;
+            document.body.appendChild(comboEl);
+            setTimeout(() => comboEl.remove(), 500);
+        }
+
+        // 두더지 올리기
+        function popMole() {
+            if (!isPlaying) return;
+            
+            const holes = document.querySelectorAll('.hole');
+            const availableHoles = Array.from(holes).filter(h => 
+                !h.querySelector('.mole').classList.contains('up')
+            );
+            
+            if (availableHoles.length === 0) return;
+            
+            const randomHole = availableHoles[Math.floor(Math.random() * availableHoles.length)];
+            const mole = randomHole.querySelector('.mole');
+            
+            mole.classList.add('up');
+            
+            const settings = DIFFICULTY[difficulty];
+            setTimeout(() => {
+                if (mole.classList.contains('up') && !mole.classList.contains('hit')) {
+                    // 놓침
+                    mole.classList.remove('up');
+                    misses++;
+                    combo = 0;
+                }
+            }, settings.moleTime);
+        }
+
+        // 게임 시작
+        function startGame() {
+            menuScreen.classList.add('hidden');
+            gameoverOverlay.classList.add('hidden');
+            hint.style.display = 'block';
+            
+            const settings = DIFFICULTY[difficulty];
+            
+            score = 0;
+            timeLeft = settings.gameTime;
+            hits = 0;
+            misses = 0;
+            combo = 0;
+            maxCombo = 0;
+            isPlaying = true;
+            
+            scoreEl.textContent = score;
+            timeEl.textContent = timeLeft;
+            timeBox.classList.remove('warning');
+            
+            createHoles();
+            
+            // 타이머
+            gameInterval = setInterval(() => {
+                timeLeft--;
+                timeEl.textContent = timeLeft;
+                
+                if (timeLeft <= 10) {
+                    timeBox.classList.add('warning');
+                }
+                
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+            
+            // 두더지 스폰
+            moleInterval = setInterval(popMole, settings.spawnRate);
+            popMole(); // 첫 두더지
+        }
+
+        // 게임 종료
+        function endGame() {
+            isPlaying = false;
+            clearInterval(gameInterval);
+            clearInterval(moleInterval);
+            
+            playSound('gameover');
+            
+            // 기록 저장
+            if (score > bestScore) {
+                bestScore = score;
+                localStorage.setItem('whackBest', bestScore);
+                bestScoreEl.textContent = bestScore;
+                newRecordEl.classList.remove('hidden');
+            } else {
+                newRecordEl.classList.add('hidden');
+            }
+            
+            totalHitsSaved += hits;
+            localStorage.setItem('whackTotalHits', totalHitsSaved);
+            totalHitsEl.textContent = totalHitsSaved;
+            
+            // 결과 표시
+            finalScoreEl.textContent = score;
+            finalHitsEl.textContent = hits;
+            finalMissEl.textContent = misses;
+            finalComboEl.textContent = maxCombo;
+            
+            gameoverOverlay.classList.remove('hidden');
+            hint.style.display = 'none';
+        }
+
+        // 난이도 선택
+        document.querySelectorAll('.diff-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                difficulty = btn.dataset.diff;
+            });
+        });
+
+        // 버튼 이벤트
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        document.getElementById('restartBtn').addEventListener('click', startGame);
+        document.getElementById('menuBtn').addEventListener('click', () => {
+            gameoverOverlay.classList.add('hidden');
+            menuScreen.classList.remove('hidden');
+        });
+
+        // 키보드 지원
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'Enter') {
+                e.preventDefault();
+                if (!isPlaying && !menuScreen.classList.contains('hidden')) {
+                    startGame();
+                } else if (!gameoverOverlay.classList.contains('hidden')) {
+                    startGame();
+                }
+            }
+        });
+
+        // 초기화
+        createHoles();
+    </script>
+</body>
+</html>
