@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>붕어빵 타이쿤 - Mini Games</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #2c1810 0%, #4a2c17 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', sans-serif;
+            touch-action: manipulation;
+            user-select: none;
+            overflow: hidden;
+        }
+        
+        .game-container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 10px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* 상단 UI */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+            margin-bottom: 10px;
+            color: white;
+        }
+        .money { font-size: 1.4rem; font-weight: bold; color: #ffd700; }
+        .day { font-size: 1rem; color: #aaa; }
+        .score { font-size: 1rem; }
+        
+        /* 손님 대기열 */
+        .customer-area {
+            background: rgba(0,0,0,0.2);
+            border-radius: 15px;
+            padding: 10px;
+            margin-bottom: 10px;
+            min-height: 80px;
+        }
+        .customer-label { color: #aaa; font-size: 0.8rem; margin-bottom: 5px; }
+        .customers {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 5px 0;
+        }
+        .customer {
+            flex-shrink: 0;
+            width: 50px;
+            height: 60px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .customer-icon { font-size: 1.8rem; }
+        .customer-want {
+            font-size: 0.7rem;
+            color: #ffd700;
+            margin-top: 2px;
+        }
+        .customer-patience {
+            position: absolute;
+            bottom: -5px;
+            left: 5px;
+            right: 5px;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .customer-patience-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #e74c3c, #f39c12, #2ecc71);
+            transition: width 0.3s;
+        }
+        
+        /* 붕어빵 틀 */
+        .grill-area {
+            flex: 1;
+            background: linear-gradient(180deg, #1a1a1a 0%, #2d2d2d 100%);
+            border-radius: 20px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            box-shadow: inset 0 5px 20px rgba(0,0,0,0.5);
+        }
+        
+        .grill {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        
+        .mold {
+            aspect-ratio: 1;
+            background: #1a1a1a;
+            border-radius: 15px;
+            border: 3px solid #444;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            transition: transform 0.1s, border-color 0.2s;
+        }
+        .mold:active { transform: scale(0.95); }
+        .mold.ready { border-color: #2ecc71; }
+        .mold.warning { border-color: #f39c12; animation: pulse 0.5s infinite; }
+        .mold.burnt { border-color: #e74c3c; }
+        
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 10px rgba(243, 156, 18, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(243, 156, 18, 0.8); }
+        }
+        
+        .fish-svg {
+            width: 80%;
+            height: 80%;
+        }
+        
+        .cook-progress {
+            position: absolute;
+            bottom: 5px;
+            left: 10%;
+            right: 10%;
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .cook-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #f39c12, #e74c3c);
+            transition: width 0.1s;
+        }
+        
+        /* 하단 액션 버튼 */
+        .action-bar {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+        }
+        .action-btn {
+            flex: 1;
+            padding: 12px 8px;
+            border: none;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+        .action-btn:active { transform: scale(0.95); }
+        .action-btn:disabled { opacity: 0.5; }
+        .action-btn .icon { font-size: 1.3rem; }
+        
+        .btn-batter { background: linear-gradient(135deg, #f4e4bc, #e8d4a8); color: #6b5b3d; }
+        .btn-paste { background: linear-gradient(135deg, #8b4513, #a0522d); color: white; }
+        .btn-flip { background: linear-gradient(135deg, #ffd700, #ffb700); color: #6b5b3d; }
+        .btn-take { background: linear-gradient(135deg, #2ecc71, #27ae60); color: white; }
+        
+        /* 완성된 붕어빵 보관 */
+        .ready-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 10px 15px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+            color: white;
+        }
+        .ready-label { font-size: 0.9rem; color: #aaa; }
+        .ready-count { font-size: 1.5rem; font-weight: bold; color: #ffd700; }
+        .sell-btn {
+            margin-left: auto;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .sell-btn:disabled { opacity: 0.5; }
+        
+        /* 게임 오버/시작 오버레이 */
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        .overlay.hidden { display: none; }
+        .overlay-content {
+            text-align: center;
+            color: white;
+            padding: 30px;
+        }
+        .overlay-title { font-size: 2rem; margin-bottom: 10px; }
+        .overlay-subtitle { font-size: 1.2rem; color: #aaa; margin-bottom: 20px; }
+        .overlay-btn {
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            border: none;
+            border-radius: 30px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        /* 토스트 메시지 */
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.2rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 200;
+        }
+        .toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="top-bar">
+            <div class="money">💰 <span id="money">0</span>원</div>
+            <div class="score">판매: <span id="sold">0</span>개</div>
+        </div>
+        
+        <div class="customer-area">
+            <div class="customer-label">👥 대기 손님</div>
+            <div class="customers" id="customers"></div>
+        </div>
+        
+        <div class="grill-area">
+            <div class="grill" id="grill"></div>
+        </div>
+        
+        <div class="action-bar">
+            <button class="action-btn btn-batter" id="btnBatter">
+                <span class="icon">🥛</span>
+                <span>반죽</span>
+            </button>
+            <button class="action-btn btn-paste" id="btnPaste">
+                <span class="icon">🫘</span>
+                <span>팥</span>
+            </button>
+            <button class="action-btn btn-flip" id="btnFlip">
+                <span class="icon">🔄</span>
+                <span>뒤집기</span>
+            </button>
+            <button class="action-btn btn-take" id="btnTake">
+                <span class="icon">✋</span>
+                <span>꺼내기</span>
+            </button>
+        </div>
+        
+        <div class="ready-area">
+            <span class="ready-label">🐟 완성:</span>
+            <span class="ready-count" id="readyCount">0</span>
+            <button class="sell-btn" id="btnSell">판매하기</button>
+        </div>
+    </div>
+    
+    <div class="overlay" id="startOverlay">
+        <div class="overlay-content">
+            <div class="overlay-title">🐟 붕어빵 타이쿤</div>
+            <div class="overlay-subtitle">맛있는 붕어빵을 만들어 팔아보세요!</div>
+            <button class="overlay-btn" id="startBtn">게임 시작</button>
+        </div>
+    </div>
+    
+    <div class="overlay hidden" id="gameOverOverlay">
+        <div class="overlay-content">
+            <div class="overlay-title">⏰ 영업 종료!</div>
+            <div class="overlay-subtitle">
+                총 수익: <span id="finalMoney">0</span>원<br>
+                판매: <span id="finalSold">0</span>개
+            </div>
+            <button class="overlay-btn" id="restartBtn">다시 시작</button>
+        </div>
+    </div>
+    
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // 게임 상태
+        const MOLD_COUNT = 6;
+        const COOK_TIME = 5000; // 5초
+        const BURN_TIME = 8000; // 8초면 탐
+        const FISH_PRICE = 500;
+        const CUSTOMER_INTERVAL = 4000;
+        const CUSTOMER_PATIENCE = 20000;
+        
+        // 틀 상태: empty, batter, paste, cooking, flipped, done, burnt
+        let molds = [];
+        let selectedMold = null;
+        let money = 0;
+        let sold = 0;
+        let readyFish = 0;
+        let customers = [];
+        let gameRunning = false;
+        let customerTimer = null;
+        
+        // DOM 요소
+        const grillEl = document.getElementById('grill');
+        const customersEl = document.getElementById('customers');
+        const moneyEl = document.getElementById('money');
+        const soldEl = document.getElementById('sold');
+        const readyCountEl = document.getElementById('readyCount');
+        const toastEl = document.getElementById('toast');
+        
+        // 붕어빵 SVG 생성
+        function createFishSVG(state) {
+            const colors = {
+                empty: '#333',
+                batter: '#f4e4bc',
+                paste: '#8b4513',
+                cooking: '#e8c080',
+                flipped: '#d4a050',
+                done: '#c49a6c',
+                burnt: '#2a1810'
+            };
+            
+            const color = colors[state] || colors.empty;
+            const hasEye = ['cooking', 'flipped', 'done', 'burnt'].includes(state);
+            const hasPaste = ['paste', 'cooking', 'flipped', 'done', 'burnt'].includes(state);
+            
+            if (state === 'empty') {
+                return `<svg class="fish-svg" viewBox="0 0 100 60">
+                    <ellipse cx="50" cy="30" rx="38" ry="22" fill="none" stroke="#444" stroke-width="2" stroke-dasharray="5,5"/>
+                </svg>`;
+            }
+            
+            return `<svg class="fish-svg" viewBox="0 0 100 60">
+                <!-- 몸통 -->
+                <ellipse cx="50" cy="30" rx="38" ry="22" fill="${color}"/>
+                <!-- 꼬리 -->
+                <path d="M88,30 Q100,15 95,5 Q90,20 88,30 Q90,40 95,55 Q100,45 88,30" fill="${color}"/>
+                <!-- 지느러미 -->
+                <path d="M15,30 Q5,20 10,12 Q12,22 15,30" fill="${color}"/>
+                ${hasEye ? `<circle cx="70" cy="25" r="4" fill="#2a1810"/>` : ''}
+                ${hasPaste ? `<ellipse cx="45" cy="32" rx="15" ry="10" fill="rgba(60,30,10,0.3)"/>` : ''}
+                <!-- 무늬 -->
+                <path d="M25,22 Q40,18 55,22" stroke="rgba(0,0,0,0.2)" stroke-width="2" fill="none"/>
+                <path d="M25,38 Q40,42 55,38" stroke="rgba(0,0,0,0.2)" stroke-width="2" fill="none"/>
+            </svg>`;
+        }
+        
+        // 틀 초기화
+        function initMolds() {
+            molds = [];
+            grillEl.innerHTML = '';
+            
+            for (let i = 0; i < MOLD_COUNT; i++) {
+                molds.push({
+                    state: 'empty',
+                    cookStart: null,
+                    flipped: false
+                });
+                
+                const moldEl = document.createElement('div');
+                moldEl.className = 'mold';
+                moldEl.dataset.index = i;
+                moldEl.innerHTML = createFishSVG('empty');
+                moldEl.addEventListener('click', () => selectMold(i));
+                grillEl.appendChild(moldEl);
+            }
+        }
+        
+        // 틀 선택
+        function selectMold(index) {
+            if (!gameRunning) return;
+            
+            // 이전 선택 해제
+            document.querySelectorAll('.mold').forEach(m => m.style.outline = 'none');
+            
+            selectedMold = index;
+            const moldEl = document.querySelectorAll('.mold')[index];
+            moldEl.style.outline = '3px solid #00d4ff';
+        }
+        
+        // 반죽 붓기
+        document.getElementById('btnBatter').addEventListener('click', () => {
+            if (selectedMold === null) return showToast('틀을 선택하세요!');
+            const mold = molds[selectedMold];
+            
+            if (mold.state !== 'empty') return showToast('빈 틀이 아닙니다!');
+            
+            mold.state = 'batter';
+            updateMoldDisplay(selectedMold);
+            showToast('반죽 투입! 🥛');
+        });
+        
+        // 팥 넣기
+        document.getElementById('btnPaste').addEventListener('click', () => {
+            if (selectedMold === null) return showToast('틀을 선택하세요!');
+            const mold = molds[selectedMold];
+            
+            if (mold.state !== 'batter') return showToast('반죽을 먼저 넣으세요!');
+            
+            mold.state = 'paste';
+            updateMoldDisplay(selectedMold);
+            showToast('팥 투입! 🫘');
+            
+            // 굽기 시작
+            setTimeout(() => {
+                if (mold.state === 'paste') {
+                    mold.state = 'cooking';
+                    mold.cookStart = Date.now();
+                    updateMoldDisplay(selectedMold);
+                }
+            }, 500);
+        });
+        
+        // 뒤집기
+        document.getElementById('btnFlip').addEventListener('click', () => {
+            if (selectedMold === null) return showToast('틀을 선택하세요!');
+            const mold = molds[selectedMold];
+            
+            if (mold.state !== 'cooking' && mold.state !== 'flipped') {
+                return showToast('아직 뒤집을 수 없어요!');
+            }
+            
+            if (mold.state === 'cooking') {
+                mold.state = 'flipped';
+                mold.cookStart = Date.now();
+                showToast('뒤집기! 🔄');
+            }
+            updateMoldDisplay(selectedMold);
+        });
+        
+        // 꺼내기
+        document.getElementById('btnTake').addEventListener('click', () => {
+            if (selectedMold === null) return showToast('틀을 선택하세요!');
+            const mold = molds[selectedMold];
+            
+            if (mold.state === 'done') {
+                mold.state = 'empty';
+                mold.cookStart = null;
+                mold.flipped = false;
+                readyFish++;
+                readyCountEl.textContent = readyFish;
+                updateMoldDisplay(selectedMold);
+                showToast('붕어빵 완성! 🐟');
+            } else if (mold.state === 'burnt') {
+                mold.state = 'empty';
+                mold.cookStart = null;
+                mold.flipped = false;
+                updateMoldDisplay(selectedMold);
+                showToast('탄 붕어빵 버림... 😢');
+            } else {
+                showToast('아직 완성되지 않았어요!');
+            }
+        });
+        
+        // 판매하기
+        document.getElementById('btnSell').addEventListener('click', () => {
+            if (readyFish <= 0) return showToast('판매할 붕어빵이 없어요!');
+            if (customers.length <= 0) return showToast('손님이 없어요!');
+            
+            // 첫 번째 손님에게 판매
+            const customer = customers.shift();
+            const sellCount = Math.min(readyFish, customer.want);
+            readyFish -= sellCount;
+            
+            const earned = sellCount * FISH_PRICE;
+            money += earned;
+            sold += sellCount;
+            
+            moneyEl.textContent = money.toLocaleString();
+            soldEl.textContent = sold;
+            readyCountEl.textContent = readyFish;
+            
+            showToast(`+${earned}원! 💰`);
+            renderCustomers();
+        });
+        
+        // 틀 디스플레이 업데이트
+        function updateMoldDisplay(index) {
+            const moldEl = document.querySelectorAll('.mold')[index];
+            const mold = molds[index];
+            
+            moldEl.innerHTML = createFishSVG(mold.state);
+            
+            // 진행 바
+            if (mold.state === 'cooking' || mold.state === 'flipped') {
+                const progressEl = document.createElement('div');
+                progressEl.className = 'cook-progress';
+                progressEl.innerHTML = '<div class="cook-progress-bar"></div>';
+                moldEl.appendChild(progressEl);
+            }
+            
+            // 클래스 업데이트
+            moldEl.classList.remove('ready', 'warning', 'burnt');
+            if (mold.state === 'done') moldEl.classList.add('ready');
+            if (mold.state === 'burnt') moldEl.classList.add('burnt');
+        }
+        
+        // 손님 생성
+        function spawnCustomer() {
+            if (customers.length >= 5) return;
+            
+            const icons = ['👨', '👩', '🧑', '👴', '👵', '👦', '👧'];
+            customers.push({
+                icon: icons[Math.floor(Math.random() * icons.length)],
+                want: Math.floor(Math.random() * 3) + 1,
+                patience: CUSTOMER_PATIENCE,
+                spawnTime: Date.now()
+            });
+            renderCustomers();
+        }
+        
+        // 손님 렌더링
+        function renderCustomers() {
+            customersEl.innerHTML = '';
+            customers.forEach((c, i) => {
+                const el = document.createElement('div');
+                el.className = 'customer';
+                const patiencePercent = (c.patience / CUSTOMER_PATIENCE) * 100;
+                el.innerHTML = `
+                    <span class="customer-icon">${c.icon}</span>
+                    <span class="customer-want">x${c.want}</span>
+                    <div class="customer-patience">
+                        <div class="customer-patience-bar" style="width: ${patiencePercent}%"></div>
+                    </div>
+                `;
+                customersEl.appendChild(el);
+            });
+        }
+        
+        // 토스트 메시지
+        function showToast(msg) {
+            toastEl.textContent = msg;
+            toastEl.classList.add('show');
+            setTimeout(() => toastEl.classList.remove('show'), 1500);
+        }
+        
+        // 게임 루프
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            const now = Date.now();
+            
+            // 틀 업데이트
+            molds.forEach((mold, i) => {
+                if (mold.state === 'cooking' || mold.state === 'flipped') {
+                    const elapsed = now - mold.cookStart;
+                    const moldEl = document.querySelectorAll('.mold')[i];
+                    const progressBar = moldEl.querySelector('.cook-progress-bar');
+                    
+                    if (progressBar) {
+                        const percent = Math.min((elapsed / COOK_TIME) * 100, 100);
+                        progressBar.style.width = percent + '%';
+                    }
+                    
+                    // 완성 체크
+                    if (elapsed >= COOK_TIME && mold.state === 'flipped') {
+                        mold.state = 'done';
+                        updateMoldDisplay(i);
+                    }
+                    
+                    // 경고
+                    if (elapsed >= COOK_TIME * 0.8 && elapsed < BURN_TIME) {
+                        moldEl.classList.add('warning');
+                    }
+                    
+                    // 타버림
+                    if (elapsed >= BURN_TIME) {
+                        mold.state = 'burnt';
+                        moldEl.classList.remove('warning');
+                        updateMoldDisplay(i);
+                    }
+                }
+            });
+            
+            // 손님 인내심 감소
+            customers.forEach((c, i) => {
+                c.patience = CUSTOMER_PATIENCE - (now - c.spawnTime);
+                if (c.patience <= 0) {
+                    customers.splice(i, 1);
+                    showToast('손님이 떠났어요... 😢');
+                }
+            });
+            renderCustomers();
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // 게임 시작
+        function startGame() {
+            document.getElementById('startOverlay').classList.add('hidden');
+            document.getElementById('gameOverOverlay').classList.add('hidden');
+            
+            money = 0;
+            sold = 0;
+            readyFish = 0;
+            customers = [];
+            selectedMold = null;
+            
+            moneyEl.textContent = '0';
+            soldEl.textContent = '0';
+            readyCountEl.textContent = '0';
+            
+            initMolds();
+            gameRunning = true;
+            
+            // 손님 생성 타이머
+            customerTimer = setInterval(spawnCustomer, CUSTOMER_INTERVAL);
+            spawnCustomer();
+            
+            gameLoop();
+        }
+        
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        document.getElementById('restartBtn').addEventListener('click', startGame);
+        
+        // 초기화
+        initMolds();
+    </script>
+</body>
+</html>
