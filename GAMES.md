@@ -4,11 +4,12 @@
 
 ---
 
-## ✅ 완성된 게임 (32개)
+## ✅ 완성된 게임 (33개)
 
 | # | 게임명 | 파일명 | 장르 | 조작 | 추가일 |
 |---|--------|--------|------|------|--------|
-| 1 | 🔵 Bubble Shooter | `bubbleshooter.html` | 퍼즐/아케이드 | 조준/탭 | 2026-02-12 |
+| 1 | 🔲 Sokoban | `sokoban.html` | 퍼즐 | 방향키/스와이프 | 2026-02-12 |
+| 2 | 🔵 Bubble Shooter | `bubbleshooter.html` | 퍼즐/아케이드 | 조준/탭 | 2026-02-12 |
 | 2 | 📦 Stack | `stack.html` | 아케이드 | 탭/스페이스 | 2026-02-12 |
 | 2 | 🐹 Whack-a-Mole | `whackamole.html` | 아케이드 | 탭 | 2026-02-12 |
 | 2 | 🎯 Dots and Boxes | `dotsboxes.html` | 대전/보드 | 탭 | 2026-02-12 |
@@ -60,6 +61,7 @@
 - [x] 🔴 Simon Says (기억력)
 - [x] 🎨 Color Match
 - [x] 🔵 Bubble Shooter (버블 슈터)
+- [x] 🔲 Sokoban (창고지기)
 
 ### 모바일 스타일
 - [x] 🍉 Fruit Ninja
@@ -93,4 +95,4 @@
 
 ---
 
-_마지막 업데이트: 2026-02-12 (Bubble Shooter 추가)_
+_마지막 업데이트: 2026-02-12 (Sokoban 추가)_

@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#2c1810">
+    <title>🔲 Sokoban</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background: linear-gradient(135deg, #2c1810 0%, #4a3728 100%);
+            touch-action: none;
+            user-select: none;
+        }
+        body { display: flex; align-items: center; justify-content: center; }
+        canvas { border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+    </style>
+</head>
+<body>
+    <canvas id="game"></canvas>
+    <script src="../framework/game-wrapper.js"></script>
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+
+        const isPC = window.innerWidth > 768;
+        const BASE_WIDTH = isPC ? 400 : 320;
+        const BASE_HEIGHT = isPC ? 600 : 500;
+        let scale = 1, dpr = 1, gameRunning = false;
+
+        function resizeCanvas() {
+            dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const wW = window.innerWidth, wH = window.innerHeight;
+            const ratio = BASE_WIDTH / BASE_HEIGHT;
+            let dW, dH;
+            if (wW/wH > ratio) { dH = Math.min(wH*0.9, BASE_HEIGHT*2); dW = dH*ratio; }
+            else { dW = Math.min(wW*0.95, BASE_WIDTH*2); dH = dW/ratio; }
+            canvas.style.width = dW+'px'; canvas.style.height = dH+'px';
+            canvas.width = dW*dpr; canvas.height = dH*dpr;
+            scale = (dW/BASE_WIDTH)*dpr;
+            ctx.setTransform(scale,0,0,scale,0,0);
+        }
+
+        // 레벨 정의 (# = 벽, @ = 플레이어, $ = 박스, . = 목표, * = 박스+목표, + = 플레이어+목표)
+        const LEVELS = [
+            // Level 1 - 튜토리얼
+            [
+                "  #####",
+                "###   #",
+                "#.@$  #",
+                "### $.#",
+                "#.##$ #",
+                "# # . ##",
+                "#$ *$$.#",
+                "#   .  #",
+                "########"
+            ],
+            // Level 2
+            [
+                "####  ",
+                "# .#  ",
+                "#  ###",
+                "#*@  #",
+                "#  $ #",
+                "#  ###",
+                "####  "
+            ],
+            // Level 3
+            [
+                "  ####",
+                "###  #",
+                "#    #",
+                "# #. #",
+                "# $$ #",
+                "#.$@##",
+                "#  ##",
+                "####"
+            ],
+            // Level 4
+            [
+                "########",
+                "#      #",
+                "# .**$ #",
+                "# .$@$ #",
+                "# .**$ #",
+                "#      #",
+                "########"
+            ],
+            // Level 5
+            [
+                " #######",
+                " #     #",
+                " # .$. #",
+                "## $@$ #",
+                "#  .$. #",
+                "#      #",
+                "########"
+            ],
+            // Level 6
+            [
+                "  ######",
+                "  #    #",
+                "  # ##.#",
+                "### ## #",
+                "# $ $  #",
+                "#  .# ##",
+                "#@  . #",
+                "#######"
+            ],
+            // Level 7
+            [
+                "#######",
+                "#  .  #",
+                "# #.# #",
+                "#  .  #",
+                "###$###",
+                "  # #",
+                "### ###",
+                "#  $  #",
+                "# #$# #",
+                "#@ $  #",
+                "#######"
+            ],
+            // Level 8
+            [
+                "  ####",
+                "  #  ###",
+                "  #    #",
+                "###$## #",
+                "#  $   #",
+                "#@#$ # #",
+                "#   .#.#",
+                "## #...#",
+                " #    ##",
+                " ######"
+            ],
+            // Level 9
+            [
+                "#########",
+                "#   #   #",
+                "# $ $ $ #",
+                "# $   $ #",
+                "###$@$###",
+                "  #...#",
+                "  #...#",
+                "  #####"
+            ],
+            // Level 10
+            [
+                "  #######",
+                "###     #",
+                "#  $#$# #",
+                "# #  .  #",
+                "#  ##.###",
+                "###  . #",
+                "  #@$$ #",
+                "  ######"
+            ]
+        ];
+
+        // 게임 상태
+        let currentLevel = 0;
+        let bestLevel = parseInt(localStorage.getItem('sokobanBest') || '0');
+        let moves = 0;
+        let pushes = 0;
+        let history = [];
+
+        // 맵 데이터
+        let mapWidth = 0;
+        let mapHeight = 0;
+        let tileSize = 0;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        // 게임 요소
+        let walls = [];
+        let goals = [];
+        let boxes = [];
+        let player = { x: 0, y: 0 };
+
+        // 타일 타입
+        const TILE = {
+            EMPTY: 0,
+            WALL: 1,
+            GOAL: 2,
+            BOX: 3,
+            PLAYER: 4
+        };
+
+        // 레벨 로드
+        function loadLevel(levelNum) {
+            const level = LEVELS[levelNum % LEVELS.length];
+            walls = [];
+            goals = [];
+            boxes = [];
+            moves = 0;
+            pushes = 0;
+            history = [];
+
+            mapHeight = level.length;
+            mapWidth = Math.max(...level.map(row => row.length));
+
+            // 타일 크기 계산
+            const maxTileW = (BASE_WIDTH - 40) / mapWidth;
+            const maxTileH = (BASE_HEIGHT - 150) / mapHeight;
+            tileSize = Math.floor(Math.min(maxTileW, maxTileH, 40));
+
+            // 중앙 정렬
+            offsetX = (BASE_WIDTH - mapWidth * tileSize) / 2;
+            offsetY = (BASE_HEIGHT - mapHeight * tileSize) / 2 + 30;
+
+            // 맵 파싱
+            for (let y = 0; y < level.length; y++) {
+                for (let x = 0; x < level[y].length; x++) {
+                    const char = level[y][x];
+                    switch (char) {
+                        case '#': walls.push({ x, y }); break;
+                        case '.': goals.push({ x, y }); break;
+                        case '$': boxes.push({ x, y }); break;
+                        case '@': player = { x, y }; break;
+                        case '*': // 박스 + 목표
+                            goals.push({ x, y });
+                            boxes.push({ x, y });
+                            break;
+                        case '+': // 플레이어 + 목표
+                            goals.push({ x, y });
+                            player = { x, y };
+                            break;
+                    }
+                }
+            }
+        }
+
+        // 충돌 체크
+        function isWall(x, y) {
+            return walls.some(w => w.x === x && w.y === y);
+        }
+
+        function getBox(x, y) {
+            return boxes.find(b => b.x === x && b.y === y);
+        }
+
+        function isGoal(x, y) {
+            return goals.some(g => g.x === x && g.y === y);
+        }
+
+        // 이동
+        function move(dx, dy) {
+            if (!gameRunning) return;
+
+            const newX = player.x + dx;
+            const newY = player.y + dy;
+
+            // 벽 체크
+            if (isWall(newX, newY)) return;
+
+            // 박스 체크
+            const box = getBox(newX, newY);
+            if (box) {
+                const boxNewX = newX + dx;
+                const boxNewY = newY + dy;
+
+                // 박스 뒤에 벽이나 다른 박스가 있으면 이동 불가
+                if (isWall(boxNewX, boxNewY) || getBox(boxNewX, boxNewY)) return;
+
+                // 히스토리 저장
+                history.push({
+                    player: { x: player.x, y: player.y },
+                    box: { index: boxes.indexOf(box), x: box.x, y: box.y },
+                    pushed: true
+                });
+
+                // 박스 이동
+                box.x = boxNewX;
+                box.y = boxNewY;
+                pushes++;
+            } else {
+                // 히스토리 저장 (박스 없이)
+                history.push({
+                    player: { x: player.x, y: player.y },
+                    pushed: false
+                });
+            }
+
+            // 플레이어 이동
+            player.x = newX;
+            player.y = newY;
+            moves++;
+
+            // 클리어 체크
+            if (checkWin()) {
+                setTimeout(() => {
+                    if (currentLevel >= bestLevel) {
+                        bestLevel = currentLevel + 1;
+                        localStorage.setItem('sokobanBest', bestLevel);
+                    }
+                    if (currentLevel < LEVELS.length - 1) {
+                        currentLevel++;
+                        loadLevel(currentLevel);
+                    } else {
+                        gameRunning = false;
+                        window.gameOver(currentLevel + 1);
+                    }
+                }, 500);
+            }
+        }
+
+        // 되돌리기
+        function undo() {
+            if (history.length === 0) return;
+
+            const state = history.pop();
+            player.x = state.player.x;
+            player.y = state.player.y;
+
+            if (state.pushed && state.box) {
+                boxes[state.box.index].x = state.box.x;
+                boxes[state.box.index].y = state.box.y;
+                pushes--;
+            }
+            moves--;
+        }
+
+        // 레벨 재시작
+        function restartLevel() {
+            loadLevel(currentLevel);
+        }
+
+        // 승리 체크
+        function checkWin() {
+            return goals.every(goal => boxes.some(box => box.x === goal.x && box.y === goal.y));
+        }
+
+        // 그리기
+        function draw() {
+            ctx.setTransform(scale, 0, 0, scale, 0, 0);
+
+            // 배경
+            ctx.fillStyle = '#4a3728';
+            ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+
+            // 바닥 타일
+            ctx.fillStyle = '#6d5344';
+            for (let y = 0; y < mapHeight; y++) {
+                for (let x = 0; x < mapWidth; x++) {
+                    if (!isWall(x, y)) {
+                        ctx.fillRect(
+                            offsetX + x * tileSize + 1,
+                            offsetY + y * tileSize + 1,
+                            tileSize - 2,
+                            tileSize - 2
+                        );
+                    }
+                }
+            }
+
+            // 목표 지점
+            goals.forEach(goal => {
+                const gx = offsetX + goal.x * tileSize + tileSize / 2;
+                const gy = offsetY + goal.y * tileSize + tileSize / 2;
+                
+                // 박스가 있는지 확인
+                const hasBox = boxes.some(b => b.x === goal.x && b.y === goal.y);
+                
+                ctx.fillStyle = hasBox ? '#27ae60' : '#e74c3c';
+                ctx.globalAlpha = hasBox ? 0.3 : 0.5;
+                ctx.beginPath();
+                ctx.arc(gx, gy, tileSize * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+
+                // X 표시
+                if (!hasBox) {
+                    ctx.strokeStyle = '#e74c3c';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(gx - 8, gy - 8);
+                    ctx.lineTo(gx + 8, gy + 8);
+                    ctx.moveTo(gx + 8, gy - 8);
+                    ctx.lineTo(gx - 8, gy + 8);
+                    ctx.stroke();
+                }
+            });
+
+            // 벽
+            walls.forEach(wall => {
+                const wx = offsetX + wall.x * tileSize;
+                const wy = offsetY + wall.y * tileSize;
+
+                // 벽돌 패턴
+                ctx.fillStyle = '#8b7355';
+                ctx.fillRect(wx, wy, tileSize, tileSize);
+
+                ctx.fillStyle = '#7a6244';
+                ctx.fillRect(wx + 2, wy + 2, tileSize - 4, tileSize / 2 - 3);
+                ctx.fillRect(wx + 2, wy + tileSize / 2 + 1, tileSize - 4, tileSize / 2 - 3);
+
+                // 그림자
+                ctx.fillStyle = '#5a4a38';
+                ctx.fillRect(wx + tileSize - 3, wy + 3, 3, tileSize - 3);
+                ctx.fillRect(wx + 3, wy + tileSize - 3, tileSize - 3, 3);
+            });
+
+            // 박스
+            boxes.forEach(box => {
+                const bx = offsetX + box.x * tileSize + 2;
+                const by = offsetY + box.y * tileSize + 2;
+                const size = tileSize - 4;
+
+                const onGoal = isGoal(box.x, box.y);
+
+                // 박스 본체
+                ctx.fillStyle = onGoal ? '#27ae60' : '#d4a574';
+                ctx.beginPath();
+                ctx.roundRect(bx, by, size, size, 4);
+                ctx.fill();
+
+                // 박스 상단 하이라이트
+                ctx.fillStyle = onGoal ? '#2ecc71' : '#e6c9a8';
+                ctx.fillRect(bx + 4, by + 4, size - 8, 6);
+
+                // 박스 무늬
+                ctx.strokeStyle = onGoal ? '#1e8449' : '#b8956e';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(bx + 6, by + 12, size - 12, size - 18);
+
+                // 체크 표시 (목표에 있을 때)
+                if (onGoal) {
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(bx + size * 0.3, by + size * 0.5);
+                    ctx.lineTo(bx + size * 0.45, by + size * 0.65);
+                    ctx.lineTo(bx + size * 0.7, by + size * 0.35);
+                    ctx.stroke();
+                }
+            });
+
+            // 플레이어 (귀여운 창고 직원!)
+            const px = offsetX + player.x * tileSize + tileSize / 2;
+            const py = offsetY + player.y * tileSize + tileSize / 2;
+            const pr = tileSize * 0.35;
+
+            // 몸통
+            ctx.fillStyle = '#3498db';
+            ctx.beginPath();
+            ctx.ellipse(px, py + 4, pr * 0.8, pr, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 머리
+            ctx.fillStyle = '#ffd93d';
+            ctx.beginPath();
+            ctx.arc(px, py - 6, pr * 0.7, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 헬멧
+            ctx.fillStyle = '#f39c12';
+            ctx.beginPath();
+            ctx.arc(px, py - 8, pr * 0.75, Math.PI, 0, false);
+            ctx.fill();
+
+            // 눈
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(px - 4, py - 7, 2, 0, Math.PI * 2);
+            ctx.arc(px + 4, py - 7, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 눈 하이라이트
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(px - 3, py - 8, 1, 0, Math.PI * 2);
+            ctx.arc(px + 5, py - 8, 1, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 미소
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(px, py - 4, 3, 0.1 * Math.PI, 0.9 * Math.PI);
+            ctx.stroke();
+
+            // UI
+            drawUI();
+        }
+
+        function drawUI() {
+            // 상단 패널
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.beginPath();
+            ctx.roundRect(10, 10, BASE_WIDTH - 20, 50, 10);
+            ctx.fill();
+
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 18px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Level ${currentLevel + 1}/${LEVELS.length}`, 20, 40);
+
+            ctx.font = '14px sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(`이동: ${moves}  밀기: ${pushes}`, BASE_WIDTH - 20, 40);
+
+            // 하단 버튼
+            ctx.fillStyle = 'rgba(255,255,255,0.1)';
+            
+            // 되돌리기 버튼
+            ctx.beginPath();
+            ctx.roundRect(20, BASE_HEIGHT - 60, 80, 45, 10);
+            ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.font = '14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('↩ 되돌리기', 60, BASE_HEIGHT - 32);
+
+            // 재시작 버튼
+            ctx.fillStyle = 'rgba(255,255,255,0.1)';
+            ctx.beginPath();
+            ctx.roundRect(BASE_WIDTH / 2 - 40, BASE_HEIGHT - 60, 80, 45, 10);
+            ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.fillText('🔄 재시작', BASE_WIDTH / 2, BASE_HEIGHT - 32);
+
+            // 다음 레벨 버튼 (클리어 시)
+            if (checkWin()) {
+                ctx.fillStyle = 'rgba(39, 174, 96, 0.8)';
+                ctx.beginPath();
+                ctx.roundRect(BASE_WIDTH - 100, BASE_HEIGHT - 60, 80, 45, 10);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.fillText('다음 ➡', BASE_WIDTH - 60, BASE_HEIGHT - 32);
+            }
+
+            // 조작 힌트
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('방향키/스와이프로 이동 | 박스를 목표(X)로 밀어요', BASE_WIDTH / 2, BASE_HEIGHT - 75);
+        }
+
+        function gameLoop() {
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 키보드 입력
+        document.addEventListener('keydown', e => {
+            if (!gameRunning) return;
+            switch(e.key) {
+                case 'ArrowUp': case 'w': case 'W': move(0, -1); break;
+                case 'ArrowDown': case 's': case 'S': move(0, 1); break;
+                case 'ArrowLeft': case 'a': case 'A': move(-1, 0); break;
+                case 'ArrowRight': case 'd': case 'D': move(1, 0); break;
+                case 'z': case 'Z': undo(); break;
+                case 'r': case 'R': restartLevel(); break;
+            }
+            e.preventDefault();
+        });
+
+        // 터치/스와이프 입력
+        let touchStartX = 0, touchStartY = 0;
+        
+        canvas.addEventListener('touchstart', e => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            touchStartX = touch.clientX - rect.left;
+            touchStartY = touch.clientY - rect.top;
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', e => {
+            e.preventDefault();
+            const touch = e.changedTouches[0];
+            const rect = canvas.getBoundingClientRect();
+            const endX = touch.clientX - rect.left;
+            const endY = touch.clientY - rect.top;
+            
+            const dx = endX - touchStartX;
+            const dy = endY - touchStartY;
+
+            // 버튼 클릭 체크
+            const scaledY = touchStartY / (rect.height / BASE_HEIGHT);
+            const scaledX = touchStartX / (rect.width / BASE_WIDTH);
+
+            if (scaledY > BASE_HEIGHT - 70) {
+                if (scaledX < 110) {
+                    undo();
+                    return;
+                } else if (scaledX > BASE_WIDTH / 2 - 50 && scaledX < BASE_WIDTH / 2 + 50) {
+                    restartLevel();
+                    return;
+                } else if (scaledX > BASE_WIDTH - 110 && checkWin()) {
+                    if (currentLevel < LEVELS.length - 1) {
+                        currentLevel++;
+                        loadLevel(currentLevel);
+                    }
+                    return;
+                }
+            }
+            
+            // 스와이프
+            if (Math.abs(dx) < 15 && Math.abs(dy) < 15) return;
+            
+            if (Math.abs(dx) > Math.abs(dy)) {
+                if (dx > 20) move(1, 0);
+                else if (dx < -20) move(-1, 0);
+            } else {
+                if (dy > 20) move(0, 1);
+                else if (dy < -20) move(0, -1);
+            }
+        }, { passive: false });
+
+        // 마우스 클릭 (버튼)
+        canvas.addEventListener('click', e => {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / (rect.width / BASE_WIDTH);
+            const y = (e.clientY - rect.top) / (rect.height / BASE_HEIGHT);
+
+            if (y > BASE_HEIGHT - 70) {
+                if (x < 110) {
+                    undo();
+                } else if (x > BASE_WIDTH / 2 - 50 && x < BASE_WIDTH / 2 + 50) {
+                    restartLevel();
+                } else if (x > BASE_WIDTH - 110 && checkWin()) {
+                    if (currentLevel < LEVELS.length - 1) {
+                        currentLevel++;
+                        loadLevel(currentLevel);
+                    }
+                }
+            }
+        });
+
+        function initGame() {
+            loadLevel(currentLevel);
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        resizeCanvas();
+        window.GAME = {
+            name: 'Sokoban',
+            emoji: '🔲',
+            image: '../assets/character-sokoban.svg',
+            start: () => { gameRunning = true; },
+            reset: () => { currentLevel = 0; initGame(); draw(); },
+            stop: () => { gameRunning = false; }
+        };
+        initGame();
+        gameLoop();
+    </script>
+</body>
+</html>
